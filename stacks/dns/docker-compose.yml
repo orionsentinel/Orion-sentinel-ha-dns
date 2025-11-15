@@ -5,8 +5,8 @@ services:
     image: pihole/pihole:latest
     container_name: pihole_primary
     environment:
-      - TZ=Europe/London
-      - WEBPASSWORD=admin
+      - TZ=${TZ:-Europe/London}
+      - WEBPASSWORD=${PIHOLE_PASSWORD}
     networks:
       pihole_net:
         ipv4_address: 192.168.8.241
@@ -18,13 +18,21 @@ services:
     volumes:
       - ./pihole1/etc-pihole:/etc/pihole
       - ./pihole1/etc-dnsmasq.d:/etc/dnsmasq.d
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
   pihole_secondary:
     image: pihole/pihole:latest
     container_name: pihole_secondary
     environment:
-      - TZ=Europe/London
-      - WEBPASSWORD=admin
+      - TZ=${TZ:-Europe/London}
+      - WEBPASSWORD=${PIHOLE_PASSWORD}
     networks:
       pihole_net:
         ipv4_address: 192.168.8.242
@@ -36,6 +44,14 @@ services:
     volumes:
       - ./pihole2/etc-pihole:/etc/pihole
       - ./pihole2/etc-dnsmasq.d:/etc/dnsmasq.d
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
   unbound_primary:
     image: mvance/unbound:latest
@@ -46,6 +62,14 @@ services:
     restart: unless-stopped
     volumes:
       - ./unbound1:/opt/unbound/etc/unbound
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
   unbound_secondary:
     image: mvance/unbound:latest
@@ -56,6 +80,14 @@ services:
     restart: unless-stopped
     volumes:
       - ./unbound2:/opt/unbound/etc/unbound
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
   keepalived:
     image: osinankur/keepalived:latest
@@ -70,6 +102,14 @@ services:
     restart: unless-stopped
     volumes:
       - ./keepalived:/etc/keepalived
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
 
 networks:
   pihole_net:

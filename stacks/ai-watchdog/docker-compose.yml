@@ -15,6 +15,14 @@ services:
     networks:
       - default
       - observability_net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
 
 networks:
   default:
