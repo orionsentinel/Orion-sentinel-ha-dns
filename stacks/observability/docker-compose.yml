@@ -4,27 +4,32 @@ services:
   prometheus:
     image: prom/prometheus:latest
     volumes:
-      - ./prometheus:/prometheus
+      - ./prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
     ports:
       - "9090:9090"
     command:
-      - '--config.file=/prometheus/prometheus.yml'
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
 
   grafana:
     image: grafana/grafana:latest
     ports:
       - "3000:3000"
     volumes:
-      - ./grafana:/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
 
   alertmanager:
     image: prom/alertmanager:latest
     ports:
       - "9093:9093"
     volumes:
-      - ./alertmanager:/alertmanager
+      - ./alertmanager:/etc/alertmanager
+      - alertmanager-data:/alertmanager
     command:
-      - '--config.file=/alertmanager/alertmanager.yml'
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
     depends_on:
       - signal-webhook-bridge
 
@@ -51,16 +56,24 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - ./loki:/loki
+      - ./loki:/etc/loki
+      - loki-data:/loki
 
   promtail:
     image: grafana/promtail:latest
     volumes:
-      - ./promtail:/promtail
+      - ./promtail:/etc/promtail
+      - /var/log:/var/log:ro
     command:
-      - '-config.file=/promtail/config.yaml'
+      - '-config.file=/etc/promtail/config.yaml'
     ports:
       - "9080:9080"
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  alertmanager-data:
+  loki-data:
 
 networks:
   default:

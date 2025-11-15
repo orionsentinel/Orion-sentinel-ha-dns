@@ -11,7 +11,7 @@ client = docker.from_env()
 
 restart_counter = Counter('ai_watchdog_restarts_total', 'Number of container restarts performed')
 
-WATCHLIST = ['pihole1', 'pihole2', 'unbound1', 'unbound2', 'keepalived-primary']
+WATCHLIST = ['pihole_primary', 'pihole_secondary', 'unbound_primary', 'unbound_secondary', 'keepalived']
 
 # Signal webhook bridge configuration
 SIGNAL_BRIDGE_URL = os.environ.get('SIGNAL_BRIDGE_URL', 'http://signal-webhook-bridge:8080/test')

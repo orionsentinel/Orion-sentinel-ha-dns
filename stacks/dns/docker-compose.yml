@@ -15,6 +15,9 @@ services:
       - '53:53/tcp'
       - '53:53/udp'
       - '80:80'
+    volumes:
+      - ./pihole1/etc-pihole:/etc/pihole
+      - ./pihole1/etc-dnsmasq.d:/etc/dnsmasq.d
 
   pihole_secondary:
     image: pihole/pihole:latest
@@ -30,6 +33,9 @@ services:
       - '53:53/tcp'
       - '53:53/udp'
       - '80:80'
+    volumes:
+      - ./pihole2/etc-pihole:/etc/pihole
+      - ./pihole2/etc-dnsmasq.d:/etc/dnsmasq.d
 
   unbound_primary:
     image: mvance/unbound:latest
@@ -38,6 +44,8 @@ services:
       pihole_net:
         ipv4_address: 192.168.8.241
     restart: unless-stopped
+    volumes:
+      - ./unbound1:/opt/unbound/etc/unbound
 
   unbound_secondary:
     image: mvance/unbound:latest
@@ -46,6 +54,8 @@ services:
       pihole_net:
         ipv4_address: 192.168.8.242
     restart: unless-stopped
+    volumes:
+      - ./unbound2:/opt/unbound/etc/unbound
 
   keepalived:
     image: osinankur/keepalived:latest
@@ -58,6 +68,8 @@ services:
       pihole_net:
         ipv4_address: 192.168.8.240
     restart: unless-stopped
+    volumes:
+      - ./keepalived:/etc/keepalived
 
 networks:
   pihole_net:
