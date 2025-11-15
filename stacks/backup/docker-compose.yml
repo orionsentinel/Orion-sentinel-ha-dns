@@ -1,0 +1,52 @@
+services:
+  backup:
+    image: alpine:latest
+    container_name: backup
+    volumes:
+      - ../dns/pihole1:/pihole1:ro
+      - ../dns/pihole2:/pihole2:ro
+      - ../observability/prometheus-data:/prometheus:ro
+      - ../observability/grafana-data:/grafana:ro
+      - ./backups:/backups
+    environment:
+      - TZ=${TZ:-UTC}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
+    command: |
+      sh -c '
+      echo "Starting backup service..."
+      echo "Backup retention: $$BACKUP_RETENTION_DAYS days"
+      
+      while true; do
+        TIMESTAMP=$$(date +%Y%m%d-%H%M%S)
+        echo "Creating backup: backup-$$TIMESTAMP.tar.gz"
+        
+        tar czf /backups/backup-$$TIMESTAMP.tar.gz \
+          /pihole1 \
+          /pihole2 \
+          /prometheus \
+          /grafana \
+          2>/dev/null || echo "Warning: Some files may have been skipped"
+        
+        echo "Backup complete: backup-$$TIMESTAMP.tar.gz"
+        
+        # Clean up old backups
+        echo "Cleaning up backups older than $$BACKUP_RETENTION_DAYS days..."
+        find /backups -name "backup-*.tar.gz" -mtime +$$BACKUP_RETENTION_DAYS -delete
+        
+        echo "Next backup in 24 hours..."
+        sleep 86400
+      done
+      '
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+networks:
+  default:
+    driver: bridge
