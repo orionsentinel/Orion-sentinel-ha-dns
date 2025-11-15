@@ -16,10 +16,10 @@ ENV_EXAMPLE="$REPO_ROOT/.env.example"
 DNS_NETWORK_NAME="dns_net"
 OBS_NETWORK_NAME="observability_net"
 PARENT_IFACE="eth0"
-SUBNET="192.168.7.0/24"
-GATEWAY="192.168.7.1"
-HOST_IP="192.168.7.240"
-VIP_ADDR="192.168.7.245"
+SUBNET="192.168.8.0/24"
+GATEWAY="192.168.8.1"
+HOST_IP="192.168.8.240"
+VIP_ADDR="192.168.8.245"
 
 log() { echo -e "\n[install] $*"; }
 err() { echo -e "\n[install][ERROR] $*" >&2; }

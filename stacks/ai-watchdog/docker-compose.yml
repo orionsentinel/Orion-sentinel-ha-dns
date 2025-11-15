@@ -1,1 +1,38 @@
-version: '3.8'\n\nservices:\n  ai-watchdog:\n    image: ai-watchdog:latest\n    environment:\n      - WATCHDOG_INTERVAL=30s\n      - NOTIFICATION_CHANNEL=email\n      - EMAIL_RECIPIENT=your-email@example.com\n    restart: always\n    volumes:\n      - /var/log/watched:/var/log/watched\n\nnetworks:\n  default:\n    driver: bridge\n
+version: '3.8'
+
+services:
+  ai-watchdog:
+    build: .
+    image: ai-watchdog:latest
+    container_name: ai-watchdog
+    environment:
+      - WATCHDOG_INTERVAL=30s
+      - SIGNAL_BRIDGE_URL=http://signal-webhook-bridge:8080/test
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/log/watched:/var/log/watched
+    networks:
+      - default
+      - observability_net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+
+networks:
+  default:
+    driver: bridge
+  observability_net:
+    external: true
+    name: monitoring-network

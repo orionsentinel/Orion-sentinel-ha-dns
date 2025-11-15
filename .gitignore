@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.env
+
+# Docker compose override files (user-specific customizations)
+docker-compose.override.yml

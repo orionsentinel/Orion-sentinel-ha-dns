@@ -2,6 +2,10 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+# Load alerting rules
+rule_files:
+  - 'alerts.yml'
+
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:
@@ -9,8 +13,12 @@ scrape_configs:
 
   - job_name: 'pihole'
     static_configs:
-      - targets: ['192.168.7.241:9617', '192.168.7.242:9617']
+      - targets: ['192.168.8.241:9617', '192.168.8.242:9617']
 
   - job_name: 'ai-watchdog'
     static_configs:
       - targets: ['ai-watchdog:5000']
+
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
