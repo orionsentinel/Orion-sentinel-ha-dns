@@ -10,9 +10,6 @@ RUN apk add --no-cache \
 # Create keepalived config directory
 RUN mkdir -p /etc/keepalived
 
-# Copy default configuration (will be overridden by volume mount)
-COPY keepalived-primary.conf /etc/keepalived/keepalived.conf.example
-
 # Expose VRRP protocol
 EXPOSE 112/udp
 
