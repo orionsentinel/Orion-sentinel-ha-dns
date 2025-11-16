@@ -212,9 +212,20 @@ cd node2
 docker compose up -d
 ```
 
-#### 6. Configure Synchronization
+#### 6. Verify Automatic Synchronization
 
-Configure Gravity Sync to sync all 4 Pi-holes (complex setup - see detailed docs)
+Synchronization is handled automatically by the built-in pihole-sync.sh script (Pi-hole v6 compatible).
+
+The sync containers on each node automatically synchronize configuration between all 4 Pi-hole instances. No manual configuration is required.
+
+To verify sync is working:
+```bash
+# Check sync container logs on any node
+docker logs pihole-sync
+
+# Test by making a change on one Pi-hole instance
+# and verifying it appears on the others
+```
 
 ### Verification
 

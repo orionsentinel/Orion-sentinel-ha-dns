@@ -184,23 +184,20 @@ cd node2
 docker compose up -d
 ```
 
-#### 6. Configure Gravity Sync (Pi #1 only)
+#### 6. Verify Automatic Sync
 
-On **Pi #1**:
+This deployment uses custom Pi-hole v6 sync scripts instead of Gravity Sync (which doesn't support v6).
+
+Synchronization is handled automatically by the built-in pihole-sync.sh containers. The sync configuration is set up during deployment and runs automatically in the background.
+
+To verify sync is working:
 ```bash
-# Install Gravity Sync
-curl -sSL https://raw.githubusercontent.com/vmstan/gravity-sync/master/gs-install.sh | bash
+# On Pi #1, check sync container logs
+docker logs pihole-sync
 
-# Configure
-sudo gravity-sync config
-# Remote host: 192.168.8.12
-# Remote user: pi
-
-# Initial sync
-sudo gravity-sync push
-
-# Enable automated sync
-sudo gravity-sync auto
+# Check that changes made on Pi #1 appear on Pi #2
+# Example: Add a domain to the blocklist on Pi #1's web interface
+# Then check Pi #2's web interface to see if it appears there
 ```
 
 ### Verification

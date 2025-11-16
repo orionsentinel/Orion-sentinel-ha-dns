@@ -549,13 +549,34 @@ cd /opt/rpi-ha-dns-stack/stacks/dns
 docker compose up -d pihole_secondary unbound_secondary keepalived
 ```
 
-#### Step 6: Setup Gravity Sync (Pi #1 only)
+#### Step 6: Verify Automatic Sync
+
+This deployment uses Pi-hole v6's built-in sync capabilities instead of Gravity Sync (which doesn't support v6).
+
+Synchronization happens automatically via the pihole-sync.sh containers that are deployed as part of the stack. The sync configuration is handled automatically:
+
+```bash
+# On Pi #1, check sync container status
+docker ps | grep pihole-sync
+
+# View sync logs
+docker logs pihole-sync
+
+# The sync container automatically:
+# - Monitors Pi-hole configuration changes
+# - Syncs gravity database, custom lists, and settings
+# - Maintains consistency between primary and secondary nodes
+```
+
+**Testing Sync:**
 ```bash
 # On Pi #1:
-curl -sSL https://raw.githubusercontent.com/vmstan/gravity-sync/master/gs-install.sh | bash
-sudo gravity-sync config
-sudo gravity-sync push
-sudo gravity-sync auto
+# 1. Add a domain to the blocklist via Pi-hole web interface
+# 2. Wait a few moments for automatic sync
+# 3. Check Pi #2's web interface to verify the domain appears
+
+# You can also manually trigger sync by restarting the sync container:
+docker restart pihole-sync
 ```
 
 ### Verification
