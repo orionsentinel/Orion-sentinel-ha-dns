@@ -162,6 +162,80 @@ services:
           cpus: '0.05'
           memory: 32M
 
+  pihole-auto-update:
+    image: alpine:latest
+    container_name: pihole-auto-update
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../../../scripts/pihole-auto-update.sh:/auto-update.sh:ro
+      - ./logs:/var/log
+    command: sh -c "apk add --no-cache docker-cli bash sqlite && bash /auto-update.sh"
+    restart: unless-stopped
+    depends_on:
+      - pihole_primary_1
+      - pihole_primary_2
+    environment:
+      - UPDATE_INTERVAL=${UPDATE_INTERVAL:-86400}
+      - PIHOLE_CONTAINERS=pihole_primary_1 pihole_primary_2
+      - LOG_FILE=/var/log/pihole-auto-update.log
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+
+  pihole-auto-backup:
+    image: alpine:latest
+    container_name: pihole-auto-backup
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../../../scripts/pihole-auto-backup.sh:/auto-backup.sh:ro
+      - ./backups:/backup
+    command: sh -c "apk add --no-cache docker-cli bash sqlite && bash /auto-backup.sh"
+    restart: unless-stopped
+    depends_on:
+      - pihole_primary_1
+      - pihole_primary_2
+    environment:
+      - BACKUP_INTERVAL=${BACKUP_INTERVAL:-86400}
+      - RETENTION_DAYS=${RETENTION_DAYS:-30}
+      - PIHOLE_CONTAINERS=pihole_primary_1 pihole_primary_2
+      - BACKUP_DIR=/backup
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+
+  health-monitor:
+    image: alpine:latest
+    container_name: health-monitor
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../../../scripts/health-monitor.sh:/health-monitor.sh:ro
+      - ./logs:/var/log
+    command: sh -c "apk add --no-cache docker-cli bash bind-tools curl && bash /health-monitor.sh"
+    restart: unless-stopped
+    environment:
+      - CHECK_INTERVAL=${HEALTH_CHECK_INTERVAL:-60}
+      - MAX_RESTART_ATTEMPTS=${MAX_RESTART_ATTEMPTS:-3}
+      - RESTART_COOLDOWN=${RESTART_COOLDOWN:-300}
+      - TEST_DOMAIN=${TEST_DOMAIN:-google.com}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.15'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+
 networks:
   dns_net:
     driver: macvlan
