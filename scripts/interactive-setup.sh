@@ -59,6 +59,9 @@ check_prerequisites() {
     # Check if running as root or with sudo
     if [[ $EUID -eq 0 ]]; then
         warn "Running as root - this is okay but not required"
+        SUDO=""
+    else
+        SUDO="sudo"
     fi
     
     # Check Docker
@@ -66,9 +69,12 @@ check_prerequisites() {
         local docker_version=$(docker --version | grep -oP '\d+\.\d+\.\d+' | head -1)
         log "Docker installed: version $docker_version"
     else
-        warn "Docker not found - will need to be installed"
-        info "Run: curl -fsSL https://get.docker.com | sh"
-        all_good=false
+        warn "Docker not found - installing now..."
+        info "Installing Docker..."
+        curl -fsSL https://get.docker.com | $SUDO sh
+        $SUDO usermod -aG docker $USER || true
+        log "Docker installed"
+        warn "You may need to log out and back in for Docker permissions to take effect"
     fi
     
     # Check Docker Compose
@@ -76,9 +82,11 @@ check_prerequisites() {
         local compose_version=$(docker compose version | grep -oP '\d+\.\d+\.\d+' | head -1)
         log "Docker Compose installed: version $compose_version"
     else
-        warn "Docker Compose not found - will need to be installed"
-        info "Run: sudo apt install docker-compose-plugin"
-        all_good=false
+        warn "Docker Compose not found - installing now..."
+        info "Installing Docker Compose plugin..."
+        $SUDO apt-get update -qq
+        $SUDO apt-get install -y docker-compose-plugin
+        log "Docker Compose installed"
     fi
     
     # Check Git

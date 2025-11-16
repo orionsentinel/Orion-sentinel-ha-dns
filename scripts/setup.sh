@@ -78,6 +78,40 @@ EOF
     read -p "Press ENTER to begin setup..."
 }
 
+check_and_install_prerequisites() {
+    log "Checking prerequisites..."
+    
+    # Check if running as root or with sudo
+    if [[ $EUID -eq 0 ]]; then
+        SUDO=""
+    else
+        SUDO="sudo"
+    fi
+    
+    # Install Docker if not present
+    if ! command -v docker &> /dev/null; then
+        info "Docker not found, installing..."
+        curl -fsSL https://get.docker.com | $SUDO sh
+        $SUDO usermod -aG docker $USER || true
+        log "Docker installed"
+        warn "You may need to log out and back in for Docker permissions to take effect"
+    else
+        log "Docker already installed"
+    fi
+    
+    # Install Docker Compose if not present
+    if ! docker compose version &> /dev/null; then
+        info "Docker Compose plugin not found, installing..."
+        $SUDO apt-get update -qq
+        $SUDO apt-get install -y docker-compose-plugin
+        log "Docker Compose installed"
+    else
+        log "Docker Compose already installed"
+    fi
+    
+    echo
+}
+
 configure_network() {
     log "Step 1: Network Configuration"
     echo
@@ -270,6 +304,9 @@ main() {
     fi
     
     show_welcome
+    
+    # Check and install prerequisites
+    check_and_install_prerequisites
     
     # Backup existing .env if it exists
     backup_existing_env
