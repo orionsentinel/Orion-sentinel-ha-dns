@@ -9,7 +9,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-REPO_ROOT="$(cd "");/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$REPO_ROOT/.env"
 ENV_EXAMPLE="$REPO_ROOT/.env.example"
 
@@ -23,6 +23,7 @@ VIP_ADDR="192.168.8.255"
 
 log() { echo -e "\n[install] $*"; }
 err() { echo -e "\n[install][ERROR] $*" >&2; }
+warn() { echo -e "\n[install][WARNING] $*"; }
 
 load_env() {
   if [[ -f "$ENV_FILE" ]]; then
@@ -48,6 +49,52 @@ load_env() {
   fi
 }
 
+check_prerequisites() {
+  log "Checking system prerequisites..."
+  
+  # Check OS
+  if [[ "$(uname -s)" != "Linux" ]]; then
+    err "This script requires Linux"
+    exit 1
+  fi
+  
+  # Check architecture
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    aarch64|armv7l|x86_64)
+      log "Supported architecture: $ARCH"
+      ;;
+    *)
+      err "Unsupported architecture: $ARCH (requires ARM or x86_64)"
+      exit 1
+      ;;
+  esac
+  
+  # Check disk space (minimum 5GB)
+  AVAILABLE_GB=$(df -BG / | awk 'NR==2 {print $4}' | sed 's/G//')
+  if [[ "$AVAILABLE_GB" -lt 5 ]]; then
+    err "Insufficient disk space: ${AVAILABLE_GB}GB (minimum 5GB required)"
+    exit 1
+  fi
+  log "Available disk space: ${AVAILABLE_GB}GB"
+  
+  # Check memory (minimum 1GB)
+  TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  TOTAL_MEM_MB=$((TOTAL_MEM_KB / 1024))
+  if [[ "$TOTAL_MEM_MB" -lt 1024 ]]; then
+    err "Insufficient memory: ${TOTAL_MEM_MB}MB (minimum 1024MB required)"
+    exit 1
+  fi
+  log "Total memory: ${TOTAL_MEM_MB}MB"
+  
+  # Check network connectivity
+  if ! ping -c 1 -W 3 8.8.8.8 >/dev/null 2>&1; then
+    err "No internet connectivity detected (required for installation)"
+    exit 1
+  fi
+  log "Network connectivity verified"
+}
+
 install_docker() {
   if command -v docker >/dev/null 2>&1; then
     log "Docker is already installed."
@@ -57,11 +104,37 @@ install_docker() {
     log "Docker installed."
   fi
 
-  if docker version >/dev/null 2>&1; then
-    log "Docker is operational."
+  # Verify Docker daemon is running
+  if ! docker version >/dev/null 2>&1; then
+    warn "Docker installed but not running. Attempting to start Docker service..."
+    if command -v systemctl >/dev/null 2>&1; then
+      sudo systemctl start docker || true
+      sleep 3
+    fi
+    
+    # Check again after attempting to start
+    if ! docker version >/dev/null 2>&1; then
+      err "Docker installed but not running or accessible."
+      err "Please start docker service with: sudo systemctl start docker"
+      err "And ensure your user is in the docker group: sudo usermod -aG docker $USER"
+      exit 1
+    fi
+  fi
+  log "Docker daemon is running and accessible."
+  
+  # Verify user has Docker permissions
+  if ! docker ps >/dev/null 2>&1; then
+    warn "Docker is running but current user does not have permissions."
+    if [[ $EUID -ne 0 ]]; then
+      if getent group docker >/dev/null 2>&1; then
+        sudo usermod -aG docker "$USER" || true
+        log "Added user $USER to docker group."
+        warn "You may need to log out and back in for Docker permissions to take effect."
+        warn "Or run: newgrp docker"
+      fi
+    fi
   else
-    err "Docker installed but not running or accessible. Please start docker service and re-run this script as a user in the docker group or as root."
-    exit 1
+    log "Docker permissions verified."
   fi
 
   if docker compose version >/dev/null 2>&1; then
@@ -69,21 +142,14 @@ install_docker() {
   else
     log "Installing Docker Compose plugin..."
     if command -v apt-get >/dev/null 2>&1; then
-      apt-get update
-      apt-get install -y docker-compose-plugin || true
+      sudo apt-get update -qq
+      sudo apt-get install -y docker-compose-plugin || true
     fi
     if ! docker compose version >/dev/null 2>&1; then
       err "docker compose plugin could not be installed automatically. Please install docker compose plugin (or docker-compose) and re-run."
       exit 1
     fi
     log "Docker Compose plugin installed."
-  fi
-
-  if [[ $EUID -ne 0 ]]; then
-    if getent group docker >/dev/null 2>&1; then
-      sudo usermod -aG docker "$SUDO_USER" || true
-      log "Added user $SUDO_USER to docker group (you may need to re-login)."
-    fi
   fi
 }
 
@@ -177,6 +243,7 @@ basic_verification() {
 
 main() {
   log "Running rpi-ha-dns-stack installer helper from $REPO_ROOT"
+  check_prerequisites
   load_env
   install_docker
   enable_ip_forward

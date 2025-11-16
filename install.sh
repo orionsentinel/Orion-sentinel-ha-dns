@@ -133,8 +133,20 @@ launch_web_ui() {
     info "Starting the web-based setup wizard..."
     info "This will guide you through the configuration process"
     
+    # Validate launch-setup-ui.sh exists
+    if [[ ! -f "scripts/launch-setup-ui.sh" ]]; then
+        err "scripts/launch-setup-ui.sh not found!"
+        err "The setup UI script is missing from the repository."
+        err "Please ensure you have cloned the complete repository."
+        exit 1
+    fi
+    
     # Start the setup UI
-    bash scripts/launch-setup-ui.sh
+    if ! bash scripts/launch-setup-ui.sh; then
+        err "Failed to start the setup UI"
+        warn "You can still proceed with manual installation using: bash scripts/install.sh"
+        exit 1
+    fi
     
     # Get the IP address
     HOST_IP=$(hostname -I | awk '{print $1}')

@@ -47,6 +47,50 @@ check_docker() {
         err "Please install Docker Compose: sudo apt install docker-compose-plugin"
         exit 1
     fi
+    
+    # Check if Docker daemon is running
+    if ! docker info &> /dev/null; then
+        err "Docker daemon is not running"
+        err "Please start Docker: sudo systemctl start docker"
+        exit 1
+    fi
+    log "Docker is installed and running"
+}
+
+check_python() {
+    if ! command -v python3 &> /dev/null; then
+        err "Python 3 is not installed"
+        err "Please install Python 3: sudo apt install python3"
+        exit 1
+    fi
+    log "Python 3 is installed"
+}
+
+check_port() {
+    local port=5555
+    if netstat -tuln 2>/dev/null | grep -q ":${port} " || ss -tuln 2>/dev/null | grep -q ":${port} "; then
+        warn "Port ${port} is already in use"
+        warn "The setup UI may not start correctly"
+        info "You can stop any process using port ${port} with: sudo lsof -ti:${port} | xargs kill -9"
+        return 1
+    fi
+    log "Port ${port} is available"
+    return 0
+}
+
+check_setup_ui_files() {
+    if [[ ! -d "$SETUP_UI_DIR" ]]; then
+        err "Setup UI directory not found: $SETUP_UI_DIR"
+        err "The repository may be incomplete"
+        exit 1
+    fi
+    
+    if [[ ! -f "$SETUP_UI_DIR/docker-compose.yml" ]]; then
+        err "Setup UI docker-compose.yml not found"
+        err "The repository may be incomplete"
+        exit 1
+    fi
+    log "Setup UI files are present"
 }
 
 start_ui() {
@@ -55,18 +99,35 @@ start_ui() {
     cd "$SETUP_UI_DIR"
     
     # Check if container is already running
-    if docker compose ps | grep -q "rpi-dns-setup-ui.*Up"; then
+    if docker compose ps 2>/dev/null | grep -q "rpi-dns-setup-ui.*Up"; then
         warn "Setup UI is already running"
         info "Restarting to apply any changes..."
         docker compose restart
     else
         # Start the container
-        docker compose up -d
+        if ! docker compose up -d; then
+            err "Failed to start the setup UI"
+            err "Check Docker logs: cd $SETUP_UI_DIR && docker compose logs"
+            exit 1
+        fi
     fi
     
     # Wait for the service to be ready
     log "Waiting for service to be ready..."
-    sleep 3
+    local retries=10
+    local count=0
+    while [[ $count -lt $retries ]]; do
+        if curl -s http://localhost:5555 >/dev/null 2>&1; then
+            break
+        fi
+        sleep 1
+        ((count++))
+    done
+    
+    if [[ $count -eq $retries ]]; then
+        warn "Setup UI may not be fully ready yet"
+        info "Give it a few more seconds, then check http://localhost:5555"
+    fi
     
     # Get the host IP
     HOST_IP=$(hostname -I | awk '{print $1}')
@@ -132,6 +193,9 @@ EOF
 main() {
     show_banner
     check_docker
+    check_python
+    check_setup_ui_files
+    check_port
     
     local command="${1:-start}"
     
