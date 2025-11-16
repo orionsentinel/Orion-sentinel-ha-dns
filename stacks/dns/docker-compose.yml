@@ -158,6 +158,32 @@ services:
           cpus: '0.05'
           memory: 32M
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    hostname: cloudflared
+    command: proxy-dns
+    networks:
+      dns_net:
+        ipv4_address: 192.168.8.250
+    restart: unless-stopped
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+    healthcheck:
+      test: ["CMD", "nslookup", "-port=5053", "cloudflare.com", "127.0.0.1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 64M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
+
 networks:
   dns_net:
     external: true
