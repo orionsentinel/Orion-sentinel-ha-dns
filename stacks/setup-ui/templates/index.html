@@ -1021,6 +1021,10 @@
             btn.textContent = 'Generating...';
             
             try {
+                // Fetch current network config for URLs
+                const networkResponse = await fetch('/api/network-config');
+                const networkConfig = await networkResponse.json();
+                
                 const response = await fetch('/api/generate-config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1047,9 +1051,9 @@ docker compose logs -f</code></div>
                             
                             <p style="margin-top: 20px;"><strong>Service URLs:</strong></p>
                             <ul>
-                                <li>Pi-hole Primary: <a href="http://${configData.network.PRIMARY_DNS_IP}/admin" target="_blank">http://${configData.network.PRIMARY_DNS_IP}/admin</a></li>
-                                <li>Pi-hole Secondary: <a href="http://${configData.network.SECONDARY_DNS_IP}/admin" target="_blank">http://${configData.network.SECONDARY_DNS_IP}/admin</a></li>
-                                <li>Grafana: <a href="http://${configData.network.HOST_IP}:3000" target="_blank">http://${configData.network.HOST_IP}:3000</a></li>
+                                <li>Pi-hole Primary: <a href="http://${networkConfig.PRIMARY_DNS_IP}/admin" target="_blank">http://${networkConfig.PRIMARY_DNS_IP}/admin</a></li>
+                                <li>Pi-hole Secondary: <a href="http://${networkConfig.SECONDARY_DNS_IP}/admin" target="_blank">http://${networkConfig.SECONDARY_DNS_IP}/admin</a></li>
+                                <li>Grafana: <a href="http://${networkConfig.HOST_IP}:3000" target="_blank">http://${networkConfig.HOST_IP}:3000</a></li>
                             </ul>
                         </div>
                     `;
