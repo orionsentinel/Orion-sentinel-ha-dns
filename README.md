@@ -95,42 +95,74 @@ This repository provides **three complete deployment configurations**:
 
 ## Quick Start Instructions 🚀
 
-### 🌟 NEW: Interactive Setup Wizard (Easiest!)
+### 🚀 One-Line Installation (Recommended for Raspberry Pi)
 
-The new interactive setup wizard will:
-- ✅ Check all prerequisites (Docker, RAM, disk space)
-- ✅ Survey your hardware (number of Pis, RAM available)
-- ✅ Help you choose the right deployment option
-- ✅ Guide through network and security configuration
-- ✅ Create all necessary configuration files
-- ✅ Provide step-by-step deployment instructions
+**The easiest way to get started - just one command!**
 
+```bash
+curl -fsSL https://raw.githubusercontent.com/yorgosroussakis/rpi-ha-dns-stack/main/install.sh | bash
+```
+
+This installer will:
+- ✅ Check system compatibility
+- ✅ Install Docker and Docker Compose automatically
+- ✅ Clone the repository
+- ✅ Launch the web setup wizard
+
+**Then follow the web wizard at:** `http://<your-pi-ip>:5555`
+
+---
+
+### 🌟 Web Setup UI (Modern & User-Friendly) ✨
+
+**Graphical web interface for easy setup!** No terminal knowledge needed.
+
+The Web Setup UI provides:
+- ✅ Modern, responsive web interface
+- ✅ 8-step guided wizard (Prerequisites → Hardware → Deployment → Node Role → Network → Security → Notifications → Summary)
+- ✅ Automatic prerequisites checking (Docker, RAM, disk space)
+- ✅ Hardware survey with detailed system information
+- ✅ **NEW:** Node role selection for multi-Pi deployments (Primary/Secondary)
+- ✅ Visual deployment option selection
+- ✅ Form-based network and security configuration
+- ✅ Real-time validation and feedback
+- ✅ Configuration summary and deployment instructions
+- ✅ Access from any device on your network
+
+**Manual Installation:**
+```bash
+git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
+cd rpi-ha-dns-stack
+bash scripts/launch-setup-ui.sh
+```
+
+**Then open your browser at:** `http://localhost:5555` or `http://<your-pi-ip>:5555`
+
+**That's it!** Follow the step-by-step wizard in your browser - no terminal knowledge required!
+
+---
+
+### Alternative: Terminal-Based Setup
+
+#### Option 1: Interactive Terminal Wizard
+
+If you prefer a terminal-based interactive wizard:
 ```bash
 git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
 cd rpi-ha-dns-stack
 bash scripts/interactive-setup.sh
 ```
 
-**That's it!** The wizard handles everything and tells you exactly what to do next.
+#### Option 2: Guided Terminal Setup
 
----
-
-### Alternative: Manual Setup
-
-If you prefer to configure manually:
+For a simpler guided terminal setup:
 ```bash
 git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
 cd rpi-ha-dns-stack
 bash scripts/setup.sh
 ```
 
-The setup script will:
-- Guide you through network configuration
-- Set up passwords securely
-- Configure Signal notifications (optional)
-- Deploy the stack automatically
-
-### Option 2: Manual Setup
+#### Option 3: Manual Setup
 1. Clone the repository:
    ```bash
    git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
@@ -163,6 +195,7 @@ The update script will:
 - Preserve your `.env` and override files
 
 ## Service Access URLs 🌐
+- **🆕 Web Setup UI:** [http://192.168.8.250:5555](http://192.168.8.250:5555) - Installation & Configuration Interface
 - **Pi-hole Primary Dashboard:** [http://192.168.8.251/admin](http://192.168.8.251/admin)
 - **Pi-hole Secondary Dashboard:** [http://192.168.8.252/admin](http://192.168.8.252/admin)
 - **Metrics Dashboard (Grafana):** [http://192.168.8.250:3000](http://192.168.8.250:3000)
