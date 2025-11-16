@@ -2,17 +2,25 @@
 
 A high-availability DNS stack running on Raspberry Pi 5.
 
-## 🆕 Multi-Node HA Setup Available!
+## 🆕 Choose Your Deployment Option!
 
-Want **true hardware-level redundancy** across two physical Raspberry Pis? Check out the new multi-node HA documentation:
+This repository now supports **THREE complete deployment options** for different High Availability scenarios:
 
-- **[📑 Documentation Index](MULTI_NODE_INDEX.md)** - Complete navigation guide
-- **[🚀 Quick Start](MULTI_NODE_QUICKSTART.md)** - Overview and quick reference
-- **[📐 Architecture Design](MULTI_NODE_HA_DESIGN.md)** - Detailed architecture and options
-- **[📋 Deployment Checklist](MULTI_NODE_DEPLOYMENT_CHECKLIST.md)** - Step-by-step guide
-- **[🎨 Visual Comparison](ARCHITECTURE_COMPARISON.md)** - Diagrams and comparisons
+### **[📂 View All Deployment Options →](deployments/)**
 
-This new setup provides automatic failover between two Raspberry Pi nodes, protecting against hardware failures!
+| Option | Description | Best For |
+|--------|-------------|----------|
+| **[HighAvail_1Pi2P2U](deployments/HighAvail_1Pi2P2U/)** | 1 Pi with 2 Pi-hole + 2 Unbound | Home labs, Testing |
+| **[HighAvail_2Pi1P1U](deployments/HighAvail_2Pi1P1U/)** ⭐ | 2 Pis with 1 Pi-hole + 1 Unbound each | **Production** (RECOMMENDED) |
+| **[HighAvail_2Pi2P2U](deployments/HighAvail_2Pi2P2U/)** | 2 Pis with 2 Pi-hole + 2 Unbound each | Mission-Critical |
+
+Each deployment option includes complete docker-compose files, configurations, and detailed instructions.
+
+**Architecture Documentation:**
+- **[📑 Documentation Index](MULTI_NODE_INDEX.md)** - Navigation guide
+- **[🚀 Quick Start](MULTI_NODE_QUICKSTART.md)** - Overview
+- **[📐 Architecture Design](MULTI_NODE_HA_DESIGN.md)** - Detailed design
+- **[🎨 Visual Comparison](ARCHITECTURE_COMPARISON.md)** - Diagrams
 
 ## Network Configuration 🛠️
 - **Host (Raspberry Pi) IP:** 192.168.8.250 (eth0)
@@ -51,17 +59,31 @@ This new setup provides automatic failover between two Raspberry Pi nodes, prote
 
 ## Deployment Options 🎯
 
-### Single-Node HA (Current Default)
-- Container-level redundancy on one Raspberry Pi
-- Automatic failover between Pi-hole/Unbound containers
-- Perfect for home labs and testing
-- **[Follow standard installation below](#quick-start-instructions-)**
+This repository provides **three complete deployment configurations**:
 
-### Multi-Node HA (New!)
-- True hardware-level redundancy across TWO Raspberry Pis
-- Automatic failover if entire node fails
-- Production-ready high availability
-- **[See Multi-Node Setup Guide](MULTI_NODE_QUICKSTART.md)**
+### HighAvail_1Pi2P2U - Single Pi Setup
+- **Architecture:** 1 Pi with 2 Pi-hole + 2 Unbound
+- **Redundancy:** Container-level only
+- **Best for:** Home labs, testing, single Pi setups
+- **Hardware:** 1x Raspberry Pi (4GB+ RAM)
+- **[View Details →](deployments/HighAvail_1Pi2P2U/)**
+
+### HighAvail_2Pi1P1U - Simplified Two-Pi Setup ⭐ RECOMMENDED
+- **Architecture:** 2 Pis with 1 Pi-hole + 1 Unbound each
+- **Redundancy:** Hardware + Node-level
+- **Best for:** Production home networks, small offices
+- **Hardware:** 2x Raspberry Pi (4GB+ RAM each)
+- **[View Details →](deployments/HighAvail_2Pi1P1U/)**
+
+### HighAvail_2Pi2P2U - Full Redundancy Two-Pi Setup
+- **Architecture:** 2 Pis with 2 Pi-hole + 2 Unbound each
+- **Redundancy:** Container + Hardware + Node-level (triple)
+- **Best for:** Mission-critical environments
+- **Hardware:** 2x Raspberry Pi (8GB RAM recommended)
+- **[View Details →](deployments/HighAvail_2Pi2P2U/)**
+
+**Quick Decision:** Have 2 Pis? → Use **HighAvail_2Pi1P1U** ⭐  
+**[See Full Comparison →](deployments/)**
 
 ## Features List 📝
 - High availability through Keepalived.
