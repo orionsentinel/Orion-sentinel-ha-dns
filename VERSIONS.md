@@ -4,6 +4,271 @@ This document tracks all changes, improvements, and bug fixes for the RPi HA DNS
 
 ---
 
+## Version 2.3.0 (2024-11-17) - DNS Analytics & Enhanced Backup
+
+### 🎯 Overview
+Added comprehensive DNS query analytics with visual Grafana dashboard and enhanced automated backup solution with full restore capability.
+
+### 📊 DNS Query Analytics
+
+#### Grafana Dashboard - Pi-hole DNS Analytics
+**New Dashboard:** Complete visual analytics for DNS queries and blocking effectiveness
+
+**Panels Included:**
+1. **Overview Stats (Top Row)**
+   - Total DNS Queries (24h)
+   - Ads Blocked Today
+   - Block Rate Percentage
+   - Domains on Blocklist
+
+2. **Query Performance**
+   - DNS Query Rate (queries/min) - Line chart showing forwarded vs cached
+   - Ads Blocking Rate (blocks/min) - Trend visualization
+   - DNS Query Response Time - Performance monitoring per instance
+
+3. **Query Analysis**
+   - Query Distribution - Pie chart (Forwarded/Cached/Blocked)
+   - Top 10 Queried Domains - Table with query counts
+   - Top 10 Blocked Domains - Table with block counts
+   - Hourly Query Volume - Bar chart for last 24 hours
+
+**Features:**
+- Real-time data with 30-second refresh
+- Prometheus data source integration
+- Interactive tooltips and legends
+- Mean/Max/Last values in legends
+- Professional dark theme
+- Auto-provisioned on Grafana startup
+
+**Access:** Grafana → Dashboards → Pi-hole DNS Analytics
+
+### 💾 Enhanced Automated Backup Solution
+
+#### New Backup System
+**Completely rewritten backup solution** with comprehensive coverage and restore capability.
+
+**Previous System:**
+- Simple tar backup of volumes
+- No metadata
+- No restore capability
+- Manual process
+
+**New System:**
+- Intelligent Docker-aware backups
+- Comprehensive metadata tracking
+- Interactive restore utility
+- Automated scheduling with cron
+- Detailed logging
+
+#### What Gets Backed Up
+
+**DNS Services:**
+- Pi-hole Primary: Configuration, gravity.db, custom lists, teleporter exports
+- Pi-hole Secondary: Configuration, gravity.db, custom lists, teleporter exports  
+- Unbound 1 & 2: Configuration files
+
+**Observability:**
+- Prometheus: Metrics data and API snapshots
+- Grafana: Dashboards, datasources, users, settings
+
+**Management Services:**
+- Portainer: Stacks, environments, settings
+- Uptime Kuma: Monitors, status pages, notifications
+- Netdata: Configuration files
+
+**Configurations:**
+- All docker-compose.yml files
+- Environment variables (.env files)
+- Provisioning configs
+- Homepage dashboard configs
+
+#### New Scripts
+
+**1. automated-backup.sh (9.9KB)**
+- Complete backup orchestration
+- Docker volume access via exec
+- Compression with tar.gz
+- Metadata generation
+- Automatic retention cleanup
+- Comprehensive logging
+- Progress indicators
+
+**2. restore-backup.sh (9.9KB)**
+- Interactive backup selection
+- Backup information display
+- Safety confirmations
+- Service stop/start management
+- Data restoration per service
+- Cleanup and verification
+
+#### Backup Features
+
+**Automated Scheduling:**
+- Runs via cron (default: daily at 2 AM)
+- Customizable schedule via `BACKUP_SCHEDULE` env variable
+- Initial backup 60 seconds after startup
+
+**Smart Retention:**
+- Automatic cleanup based on `BACKUP_RETENTION_DAYS`
+- Default: 7 days retention
+- Statistics tracking (count, size, oldest)
+
+**Metadata Tracking:**
+```
+BACKUP_INFO.txt contains:
+- Backup timestamp
+- Hostname and stack version
+- Running containers list
+- Backup contents inventory
+- Total backup size
+```
+
+**Compression:**
+- Efficient tar.gz format
+- Typical size: 100MB-2GB depending on data
+- Named: `stack_backup_YYYYMMDD_HHMMSS.tar.gz`
+
+#### Restore Process
+
+**Interactive Restore:**
+```bash
+bash /opt/rpi-ha-dns-stack/scripts/restore-backup.sh
+```
+
+**Steps:**
+1. Lists all available backups with size and date
+2. User selects backup to restore
+3. Displays backup information
+4. Confirms destructive operation
+5. Stops all services
+6. Restores configurations
+7. Restores service data
+8. Restarts services
+9. Cleanup and verification
+
+**Safety Features:**
+- Confirmation required before restore
+- Current configs backed up before overwrite
+- Services properly stopped/started
+- Error handling and warnings
+- Comprehensive status messages
+
+#### Deployment
+
+**Docker Compose Service:**
+```yaml
+backup-service:
+  - Runs on Alpine Linux
+  - Docker socket access (read-only)
+  - Cron scheduler
+  - Health checks
+  - Resource limits
+  - Auto-restart
+```
+
+**Environment Variables:**
+```bash
+TZ=UTC                          # Timezone
+BACKUP_RETENTION_DAYS=7         # Days to keep backups
+BACKUP_SCHEDULE=0 2 * * *       # Cron schedule
+```
+
+**Quick Start:**
+```bash
+cd /opt/rpi-ha-dns-stack/stacks/backup
+docker compose up -d
+```
+
+#### Backup Management
+
+**Manual Backup:**
+```bash
+bash /opt/rpi-ha-dns-stack/scripts/automated-backup.sh
+```
+
+**List Backups:**
+```bash
+ls -lh /opt/rpi-ha-dns-stack/backups/stack_backup_*.tar.gz
+```
+
+**View Backup Info:**
+```bash
+tar xzf backup.tar.gz stack_backup_*/BACKUP_INFO.txt -O
+```
+
+**Monitor Logs:**
+```bash
+tail -f /opt/rpi-ha-dns-stack/backups/backup.log
+docker logs backup-service
+```
+
+### 📚 Documentation
+
+**Updated Files:**
+- `stacks/backup/README.md` - Complete backup guide with best practices
+- `stacks/observability/grafana/provisioning/dashboards/pihole-dns-analytics.json` - New dashboard
+
+**New Documentation Sections:**
+- Backup file structure
+- Restore procedures
+- Troubleshooting guide
+- Security considerations
+- Retention strategies
+- Off-site backup recommendations
+
+### 🔧 Technical Details
+
+**Backup Script Architecture:**
+- Modular functions for each service
+- Error handling with fallbacks
+- Colored output for readability
+- Logging to file and console
+- Docker API integration
+- Volume access via `docker exec`
+
+**Dashboard Integration:**
+- Auto-provisioned via Grafana
+- Prometheus datasource configured
+- Pi-hole exporter metrics
+- Compatible with existing monitoring
+
+### 📊 Impact
+
+**DNS Analytics:**
+- ✅ Visual insights into DNS performance
+- ✅ Easy identification of query patterns
+- ✅ Block rate effectiveness monitoring
+- ✅ Performance trending over time
+
+**Backup Solution:**
+- ✅ 10x more comprehensive than previous
+- ✅ Full restore capability (previously impossible)
+- ✅ Metadata for backup tracking
+- ✅ Production-ready reliability
+- ✅ User-friendly operations
+
+### 🚀 Upgrade Instructions
+
+**For DNS Analytics:**
+1. Grafana will auto-load dashboard on next restart
+2. Or manually restart: `cd stacks/observability && docker compose restart grafana`
+3. Access: Grafana → Dashboards → Pi-hole DNS Analytics
+
+**For Enhanced Backup:**
+1. Stop old backup service: `cd stacks/backup && docker compose down`
+2. Pull latest changes
+3. Deploy new service: `docker compose up -d`
+4. Verify: `docker logs backup-service`
+5. First backup runs automatically after 60 seconds
+
+**Migration from Old Backups:**
+- Old `backup-YYYYMMDD-HHMMSS.tar.gz` files remain
+- New format: `stack_backup_YYYYMMDD_HHMMSS.tar.gz`
+- Old backups can be manually extracted if needed
+- Recommend: Keep 1-2 old backups, then let retention cleanup
+
+---
+
 ## Version 2.2.0 (2024-11-17) - DNS Stack Optimization
 
 ### 🎯 Overview

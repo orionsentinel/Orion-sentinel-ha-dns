@@ -1,51 +1,54 @@
 services:
   backup:
     image: alpine:latest
-    container_name: backup
+    container_name: backup-service
     volumes:
-      - ../dns/pihole1:/pihole1:ro
-      - ../dns/pihole2:/pihole2:ro
-      - ../observability/prometheus-data:/prometheus:ro
-      - ../observability/grafana-data:/grafana:ro
-      - ./backups:/backups
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../../:/stack:ro
+      - ../../backups:/backups
+      - ../../scripts:/scripts:ro
     environment:
       - TZ=${TZ:-UTC}
       - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
+      - BACKUP_DIR=/backups
+      - STACK_ROOT=/stack
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 2 * * *}
     command: |
       sh -c '
-      echo "Starting backup service..."
-      echo "Backup retention: $$BACKUP_RETENTION_DAYS days"
+      apk add --no-cache docker-cli bash curl
       
-      while true; do
-        TIMESTAMP=$$(date +%Y%m%d-%H%M%S)
-        echo "Creating backup: backup-$$TIMESTAMP.tar.gz"
-        
-        tar czf /backups/backup-$$TIMESTAMP.tar.gz \
-          /pihole1 \
-          /pihole2 \
-          /prometheus \
-          /grafana \
-          2>/dev/null || echo "Warning: Some files may have been skipped"
-        
-        echo "Backup complete: backup-$$TIMESTAMP.tar.gz"
-        
-        # Clean up old backups
-        echo "Cleaning up backups older than $$BACKUP_RETENTION_DAYS days..."
-        find /backups -name "backup-*.tar.gz" -mtime +$$BACKUP_RETENTION_DAYS -delete
-        
-        echo "Next backup in 24 hours..."
-        sleep 86400
-      done
+      echo "════════════════════════════════════════════════════"
+      echo "  Enhanced Backup Service Starting"
+      echo "  Retention: $$BACKUP_RETENTION_DAYS days"
+      echo "  Schedule: Daily at 2 AM (cron: $$BACKUP_SCHEDULE)"
+      echo "════════════════════════════════════════════════════"
+      
+      # Initial backup on startup (after 60 seconds delay)
+      (sleep 60 && bash /scripts/automated-backup.sh) &
+      
+      # Install crond
+      echo "$$BACKUP_SCHEDULE bash /scripts/automated-backup.sh >> /backups/backup.log 2>&1" | crontab -
+      
+      echo "✓ Backup service configured"
+      echo "✓ Running crond..."
+      
+      # Run crond in foreground
+      crond -f -l 2
       '
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pgrep", "crond"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
         limits:
           cpus: '0.5'
-          memory: 256M
+          memory: 512M
         reservations:
           cpus: '0.1'
-          memory: 64M
+          memory: 128M
 
 networks:
   default:
