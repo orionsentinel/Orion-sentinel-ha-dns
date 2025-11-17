@@ -2,8 +2,12 @@
 # Interactive Deployment Selector and Setup Script
 # Guides users through choosing the right HA DNS deployment option
 
-set -euo pipefail
+# Use safer error handling to prevent session disconnects
+set -u
 IFS=$'\n\t'
+
+# Trap errors and provide helpful messages
+trap 'echo -e "\n${RED}[ERROR]${NC} An error occurred. Setup aborted." >&2; exit 1' ERR
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -39,7 +43,7 @@ section() { echo -e "\n${CYAN}${BOLD}$*${NC}\n"; }
 # Wait for user to press Enter
 press_enter() {
     echo ""
-    read -p "Press Enter to continue..."
+    read -r -p "Press Enter to continue..."
 }
 
 # Check prerequisites
@@ -72,7 +76,7 @@ check_prerequisites() {
         warn "Docker not found - installing now..."
         info "Installing Docker..."
         curl -fsSL https://get.docker.com | $SUDO sh
-        $SUDO usermod -aG docker $USER || true
+        $SUDO usermod -aG docker "$USER" || true
         log "Docker installed"
         warn "You may need to log out and back in for Docker permissions to take effect"
     fi
@@ -130,7 +134,7 @@ check_prerequisites() {
     else
         err "Some prerequisites are missing"
         echo ""
-        read -p "Do you want to continue anyway? (y/N): " continue_anyway
+        read -r -p "Do you want to continue anyway? (y/N): " continue_anyway
         if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
             echo "Please install missing prerequisites and run this script again."
             exit 1
@@ -152,11 +156,11 @@ hardware_survey() {
     echo "  1 - Single Raspberry Pi"
     echo "  2 - Two Raspberry Pis (for hardware redundancy)"
     echo ""
-    read -p "Enter number (1 or 2): " PI_COUNT
+    read -r -p "Enter number (1 or 2): " PI_COUNT
     
     while [[ ! "$PI_COUNT" =~ ^[12]$ ]]; do
         warn "Please enter 1 or 2"
-        read -p "Enter number (1 or 2): " PI_COUNT
+        read -r -p "Enter number (1 or 2): " PI_COUNT
     done
     
     # Check RAM if possible
@@ -166,9 +170,9 @@ hardware_survey() {
     if [[ $PI_COUNT -eq 2 ]]; then
         echo ""
         echo "Do both Raspberry Pis have the same amount of RAM?"
-        read -p "(Y/n): " same_ram
+        read -r -p "(Y/n): " same_ram
         if [[ "$same_ram" =~ ^[Nn]$ ]]; then
-            read -p "Enter RAM (GB) for second Pi: " ram_gb_2
+            read -r -p "Enter RAM (GB) for second Pi: " ram_gb_2
         else
             ram_gb_2=$ram_gb
         fi
@@ -243,11 +247,11 @@ show_deployment_options() {
         fi
         
         echo ""
-        read -p "Enter your choice (1 or 2): " deployment_choice
+        read -r -p "Enter your choice (1 or 2): " deployment_choice
         
         while [[ ! "$deployment_choice" =~ ^[12]$ ]]; do
             warn "Please enter 1 or 2"
-            read -p "Enter your choice (1 or 2): " deployment_choice
+            read -r -p "Enter your choice (1 or 2): " deployment_choice
         done
         
         if [[ "$deployment_choice" == "1" ]]; then
@@ -365,19 +369,19 @@ configure_network() {
         warn "Ethernet is strongly recommended for DNS servers!"
     else
         warn "Could not detect network interface"
-        read -p "Enter network interface name (e.g., eth0): " NETWORK_INTERFACE
+        read -r -p "Enter network interface name (e.g., eth0): " NETWORK_INTERFACE
     fi
     
     # Get network details
-    read -p "Enter your network subnet (e.g., 192.168.8.0/24) [$DEFAULT_SUBNET]: " SUBNET
+    read -r -p "Enter your network subnet (e.g., 192.168.8.0/24) [$DEFAULT_SUBNET]: " SUBNET
     SUBNET=${SUBNET:-$DEFAULT_SUBNET}
     
-    read -p "Enter your network gateway (e.g., 192.168.8.1) [$DEFAULT_GATEWAY]: " GATEWAY
+    read -r -p "Enter your network gateway (e.g., 192.168.8.1) [$DEFAULT_GATEWAY]: " GATEWAY
     GATEWAY=${GATEWAY:-$DEFAULT_GATEWAY}
     
     # Get timezone
     local detected_tz=$(timedatectl show -p Timezone --value 2>/dev/null || echo "Europe/London")
-    read -p "Enter your timezone [$detected_tz]: " TZ
+    read -r -p "Enter your timezone [$detected_tz]: " TZ
     TZ=${TZ:-$detected_tz}
     
     log "Network configured"
@@ -393,9 +397,9 @@ configure_passwords() {
     
     # Pi-hole password
     while true; do
-        read -s -p "Pi-hole admin password: " PIHOLE_PASSWORD
+        read -r -s -p "Pi-hole admin password: " PIHOLE_PASSWORD
         echo ""
-        read -s -p "Confirm Pi-hole password: " PIHOLE_PASSWORD2
+        read -r -s -p "Confirm Pi-hole password: " PIHOLE_PASSWORD2
         echo ""
         if [[ "$PIHOLE_PASSWORD" == "$PIHOLE_PASSWORD2" ]]; then
             if [[ ${#PIHOLE_PASSWORD} -ge 8 ]]; then
@@ -411,9 +415,9 @@ configure_passwords() {
     
     # Grafana password
     while true; do
-        read -s -p "Grafana admin password: " GRAFANA_PASSWORD
+        read -r -s -p "Grafana admin password: " GRAFANA_PASSWORD
         echo ""
-        read -s -p "Confirm Grafana password: " GRAFANA_PASSWORD2
+        read -r -s -p "Confirm Grafana password: " GRAFANA_PASSWORD2
         echo ""
         if [[ "$GRAFANA_PASSWORD" == "$GRAFANA_PASSWORD2" ]]; then
             if [[ ${#GRAFANA_PASSWORD} -ge 8 ]]; then
@@ -430,9 +434,9 @@ configure_passwords() {
     # VRRP password (for multi-node setups)
     if [[ "$PI_COUNT" -eq 2 ]]; then
         while true; do
-            read -s -p "VRRP/Keepalived password: " VRRP_PASSWORD
+            read -r -s -p "VRRP/Keepalived password: " VRRP_PASSWORD
             echo ""
-            read -s -p "Confirm VRRP password: " VRRP_PASSWORD2
+            read -r -s -p "Confirm VRRP password: " VRRP_PASSWORD2
             echo ""
             if [[ "$VRRP_PASSWORD" == "$VRRP_PASSWORD2" ]]; then
                 if [[ ${#VRRP_PASSWORD} -ge 8 ]]; then

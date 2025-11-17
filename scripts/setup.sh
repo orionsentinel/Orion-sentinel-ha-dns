@@ -2,8 +2,12 @@
 # Interactive setup script for rpi-ha-dns-stack
 # Guides users through configuration and deployment
 
-set -euo pipefail
+# Use safer error handling to prevent session disconnects
+set -u
 IFS=$'\n\t'
+
+# Trap errors and provide helpful messages
+trap 'echo -e "\n${RED}[ERROR]${NC} An error occurred. Installation aborted." >&2; exit 1' ERR
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$REPO_ROOT/.env"
@@ -35,7 +39,7 @@ prompt() {
         default_value="$current_value"
     fi
     
-    read -p "$prompt_text [$default_value]: " input
+    read -r -p "$prompt_text [$default_value]: " input
     echo "${input:-$default_value}"
 }
 
@@ -45,10 +49,10 @@ prompt_password() {
     local password=""
     
     while true; do
-        read -s -p "$prompt_text: " password
+        read -r -s -p "$prompt_text: " password
         echo
         if [[ -n "$password" ]]; then
-            read -s -p "Confirm password: " password_confirm
+            read -r -s -p "Confirm password: " password_confirm
             echo
             if [[ "$password" == "$password_confirm" ]]; then
                 echo "$password"
@@ -75,7 +79,7 @@ show_welcome() {
 ╚════════════════════════════════════════════════════════════════╝
 
 EOF
-    read -p "Press ENTER to begin setup..."
+    read -r -p "Press ENTER to begin setup..."
 }
 
 check_and_install_prerequisites() {
@@ -92,7 +96,7 @@ check_and_install_prerequisites() {
     if ! command -v docker &> /dev/null; then
         info "Docker not found, installing..."
         curl -fsSL https://get.docker.com | $SUDO sh
-        $SUDO usermod -aG docker $USER || true
+        $SUDO usermod -aG docker "$USER" || true
         log "Docker installed"
         warn "You may need to log out and back in for Docker permissions to take effect"
     else
@@ -167,7 +171,7 @@ configure_signal() {
     info "You can do this after installation by following SIGNAL_INTEGRATION_GUIDE.md"
     echo
     
-    read -p "Do you want to configure Signal notifications now? (y/N): " configure_signal_choice
+    read -r -p "Do you want to configure Signal notifications now? (y/N): " configure_signal_choice
     
     if [[ "$configure_signal_choice" =~ ^[Yy]$ ]]; then
         SIGNAL_NUMBER=$(prompt "SIGNAL_NUMBER" "Phone number to register with Signal (with country code, e.g., +1234567890)" "+1234567890")
@@ -275,7 +279,7 @@ prompt_deployment() {
     echo
     log "Ready to deploy the stack!"
     echo
-    read -p "Would you like to run the deployment now? (Y/n): " deploy_choice
+    read -r -p "Would you like to run the deployment now? (Y/n): " deploy_choice
     
     if [[ ! "$deploy_choice" =~ ^[Nn]$ ]]; then
         log "Starting deployment..."

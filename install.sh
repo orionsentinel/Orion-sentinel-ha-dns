@@ -85,7 +85,7 @@ install_dependencies() {
     if ! command -v docker &> /dev/null; then
         info "Docker not found, installing..."
         curl -fsSL https://get.docker.com | $SUDO sh
-        $SUDO usermod -aG docker $USER || true
+        $SUDO usermod -aG docker "$USER" || true
         log "Docker installed"
         warn "You may need to log out and back in for Docker permissions to take effect"
     else
@@ -109,7 +109,7 @@ clone_repository() {
     
     if [[ -d "$INSTALL_DIR" ]]; then
         warn "Directory $INSTALL_DIR already exists"
-        read -p "Do you want to update it? (y/N): " -n 1 -r
+        read -r -p "Do you want to update it? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             cd "$INSTALL_DIR"
@@ -186,7 +186,7 @@ main() {
     echo -e "  4. Launch the web-based setup wizard"
     echo ""
     
-    read -p "Press Enter to continue or Ctrl+C to cancel..."
+    read -r -p "Press Enter to continue or Ctrl+C to cancel..."
     
     check_os
     install_dependencies

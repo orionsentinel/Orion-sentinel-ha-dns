@@ -144,7 +144,25 @@ bash scripts/launch-setup-ui.sh
 
 ### Alternative: Terminal-Based Setup
 
-#### Option 1: Interactive Terminal Wizard
+#### 🆕 Option 1: Easy Installer (Recommended) ✨
+
+**NEW:** Robust installer with proper error handling and recovery!
+
+```bash
+git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
+cd rpi-ha-dns-stack
+bash scripts/easy-install.sh
+```
+
+Features:
+- ✅ Comprehensive prerequisite checks
+- ✅ Safe error handling (won't cause unexpected reboots)
+- ✅ Automatic recovery from failures
+- ✅ Choose between Web UI or Terminal setup
+- ✅ Verbose mode for debugging: `bash scripts/easy-install.sh --verbose`
+- ✅ Help available: `bash scripts/easy-install.sh --help`
+
+#### Option 2: Interactive Terminal Wizard
 
 If you prefer a terminal-based interactive wizard:
 ```bash
@@ -153,7 +171,7 @@ cd rpi-ha-dns-stack
 bash scripts/interactive-setup.sh
 ```
 
-#### Option 2: Guided Terminal Setup
+#### Option 3: Guided Terminal Setup
 
 For a simpler guided terminal setup:
 ```bash
