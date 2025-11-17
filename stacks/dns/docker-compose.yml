@@ -1,6 +1,46 @@
+# Common configuration anchors for reusability
+x-pihole-common: &pihole-common
+  image: pihole/pihole:latest
+  restart: unless-stopped
+  environment:
+    - TZ=${TZ:-Europe/London}
+    - WEBPASSWORD=${PIHOLE_PASSWORD}
+  healthcheck:
+    test: ["CMD", "dig", "@127.0.0.1", "google.com", "+short"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 60s
+  deploy:
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: 512M
+      reservations:
+        cpus: '0.25'
+        memory: 128M
+
+x-unbound-common: &unbound-common
+  image: klutchell/unbound:latest
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "nc", "-z", "-u", "127.0.0.1", "5335"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 30s
+  deploy:
+    resources:
+      limits:
+        cpus: '0.5'
+        memory: 256M
+      reservations:
+        cpus: '0.1'
+        memory: 64M
+
 services:
   pihole_primary:
-    image: pihole/pihole:latest
+    <<: *pihole-common
     container_name: pihole_primary
     hostname: pihole-primary
     environment:
@@ -10,27 +50,12 @@ services:
     networks:
       dns_net:
         ipv4_address: 192.168.8.251
-    restart: unless-stopped
     volumes:
       - ./pihole1/etc-pihole:/etc/pihole
       - ./pihole1/etc-dnsmasq.d:/etc/dnsmasq.d
-    healthcheck:
-      test: ["CMD", "dig", "@127.0.0.1", "google.com", "+short"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
 
   pihole_secondary:
-    image: pihole/pihole:latest
+    <<: *pihole-common
     container_name: pihole_secondary
     hostname: pihole-secondary
     environment:
@@ -40,74 +65,29 @@ services:
     networks:
       dns_net:
         ipv4_address: 192.168.8.252
-    restart: unless-stopped
     volumes:
       - ./pihole2/etc-pihole:/etc/pihole
       - ./pihole2/etc-dnsmasq.d:/etc/dnsmasq.d
-    healthcheck:
-      test: ["CMD", "dig", "@127.0.0.1", "google.com", "+short"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
 
   unbound_primary:
-    image: klutchell/unbound:latest
+    <<: *unbound-common
     container_name: unbound_primary
     hostname: unbound-primary
     networks:
       dns_net:
         ipv4_address: 192.168.8.253
-    restart: unless-stopped
     volumes:
-      - ./unbound1:/opt/unbound/etc/unbound
-    healthcheck:
-      test: ["CMD", "nc", "-z", "-u", "127.0.0.1", "5335"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
+      - ./unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
 
   unbound_secondary:
-    image: klutchell/unbound:latest
+    <<: *unbound-common
     container_name: unbound_secondary
     hostname: unbound-secondary
     networks:
       dns_net:
         ipv4_address: 192.168.8.254
-    restart: unless-stopped
     volumes:
-      - ./unbound2:/opt/unbound/etc/unbound
-    healthcheck:
-      test: ["CMD", "nc", "-z", "-u", "127.0.0.1", "5335"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
+      - ./unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
 
   keepalived:
     build: ./keepalived

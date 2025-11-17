@@ -278,7 +278,14 @@ create_env_symlinks() {
 
 create_directories() {
   log "Creating volume directories (pihole, unbound, keepalived, observability, ai-watchdog)"
-  mkdir -p "$REPO_ROOT"/{stacks/dns/pihole1/etc-pihole,stacks/dns/pihole1/etc-dnsmasq.d,stacks/dns/pihole2/etc-pihole,stacks/dns/pihole2/etc-dnsmasq.d,stacks/dns/unbound1,stacks/dns/unbound2,stacks/dns/keepalived,stacks/observability/prometheus,stacks/observability/grafana,stacks/observability/alertmanager,stacks/observability/signal-cli-config,stacks/ai-watchdog}
+  mkdir -p "$REPO_ROOT"/{stacks/dns/pihole1/etc-pihole,stacks/dns/pihole1/etc-dnsmasq.d,stacks/dns/pihole2/etc-pihole,stacks/dns/pihole2/etc-dnsmasq.d,stacks/dns/unbound,stacks/dns/keepalived,stacks/observability/prometheus,stacks/observability/grafana,stacks/observability/alertmanager,stacks/observability/signal-cli-config,stacks/ai-watchdog}
+  
+  # Copy shared unbound config if not exists
+  if [[ ! -f "$REPO_ROOT/stacks/dns/unbound/unbound.conf" ]] && [[ -f "$REPO_ROOT/stacks/dns/unbound1/unbound.conf" ]]; then
+    log "Migrating to shared unbound configuration..."
+    cp "$REPO_ROOT/stacks/dns/unbound1/unbound.conf" "$REPO_ROOT/stacks/dns/unbound/unbound.conf"
+  fi
+  
   log "Directories created."
 }
 docker_network_exists() { docker network inspect "$1" >/dev/null 2>&1; }

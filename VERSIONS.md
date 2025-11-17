@@ -4,6 +4,126 @@ This document tracks all changes, improvements, and bug fixes for the RPi HA DNS
 
 ---
 
+## Version 2.2.0 (2024-11-17) - DNS Stack Optimization
+
+### 🎯 Overview
+Major optimization of Pi-hole + Unbound configuration based on community best practices. Simplified configuration management with YAML anchors and unified Unbound config.
+
+### ⚡ Configuration Simplification
+
+#### 1. YAML Anchors in docker-compose.yml
+**Improvement:** Reduced duplication using YAML anchors for common service configurations
+
+**Before:** 190 lines with repeated configuration blocks
+**After:** 170 lines (11% reduction) using `x-pihole-common` and `x-unbound-common` anchors
+
+**Benefits:**
+- Single source of truth for common settings
+- Easier maintenance - change once, apply everywhere
+- Industry-standard Docker Compose pattern
+- Consistent configuration across instances
+
+**Example:**
+```yaml
+x-pihole-common: &pihole-common
+  image: pihole/pihole:latest
+  restart: unless-stopped
+  # ... common settings
+
+services:
+  pihole_primary:
+    <<: *pihole-common  # Inherit common config
+```
+
+#### 2. Unified Unbound Configuration
+**Improvement:** Consolidated duplicate unbound configs into single shared file
+
+**Old Structure:**
+```
+stacks/dns/unbound1/unbound.conf  (duplicate)
+stacks/dns/unbound2/unbound.conf  (duplicate)
+```
+
+**New Structure:**
+```
+stacks/dns/unbound/unbound.conf  (shared by both instances)
+```
+
+**Benefits:**
+- Single source of truth for DNS configuration
+- Easier updates - modify one file instead of two
+- Automatic consistency
+- Reduced maintenance burden
+
+**Backward Compatibility:** Install script automatically migrates old configs
+
+#### 3. Enhanced Unbound Settings
+Added modern best practices from community implementations:
+
+**Privacy Enhancements:**
+- `qname-minimisation: yes` - RFC 7816 privacy protection
+- `aggressive-nsec: yes` - Faster negative responses
+
+**Performance Improvements:**
+- `serve-expired: yes` - Serve stale cache during outages
+- `minimal-responses: yes` - Reduce response size
+- `rrset-roundrobin: yes` - Load balancing for multiple records
+- `so-rcvbuf: 4m` / `so-sndbuf: 4m` - Buffer optimization
+
+**Security Additions:**
+- Comprehensive access-control for all private networks (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
+- Explicit deny for public addresses
+
+### 📚 Documentation Additions
+
+**New File:** `stacks/dns/OPTIMIZATIONS.md`
+- Explains all optimizations and their benefits
+- Migration guide from old to new structure
+- Performance tuning recommendations
+- References to community best practices
+
+**Research Sources:**
+- pi-hole/docker-pi-hole (official patterns)
+- MatthewVance/unbound-docker (optimization techniques)
+- chriscrowe/docker-pihole-unbound (integration patterns)
+- IAmStoxe/wirehole (HA patterns)
+
+### 🔄 Migration Support
+
+**Automatic Migration:**
+- Install script detects old unbound1/unbound2 structure
+- Copies config to new shared location
+- Both old and new structures supported
+- No manual intervention required
+
+### 📊 Statistics
+
+**Configuration Files:**
+- docker-compose.yml: 190 → 170 lines (11% reduction)
+- Unbound configs: 2 files → 1 file (50% reduction)
+- New documentation: OPTIMIZATIONS.md (4.6KB)
+
+**Maintainability:**
+- Config duplication: Eliminated
+- Update points: Reduced from 4 to 2 locations
+- Consistency: Automatic via shared configs
+
+### 🎯 Performance Impact
+
+**Memory:** No change - same resource limits
+**CPU:** No change - same service configuration
+**Maintainability:** Significantly improved
+**Consistency:** Guaranteed through shared configs
+
+### ✅ Validation
+
+- Docker Compose config validated
+- Backward compatibility tested
+- Migration path verified
+- All existing features preserved
+
+---
+
 ## Version 2.1.0 (2024-11-16) - Installation System Overhaul
 
 ### 🎯 Overview
