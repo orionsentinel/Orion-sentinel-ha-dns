@@ -1158,14 +1158,43 @@
                             ${nodeRoleNote}
                         </div>
                         
-                        <div class="summary-section">
-                            <h3>Next Steps - Manual Deployment</h3>
-                            <p>Run the following commands to deploy your stack:</p>
-                            <div class="code-block"><code>cd ${deploymentPathDisplay}
+                        <div class="alert alert-info" style="margin-top: 20px;">
+                            <strong>Ready to Deploy?</strong>
+                            <p>Click "Deploy Now" to automatically create networks and start containers, or use manual deployment instructions below.</p>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 20px 0;">
+                            <button class="btn btn-success" id="btn-deploy-now" style="font-size: 1.1em; padding: 15px 40px;">
+                                🚀 Deploy Now (Automatic)
+                            </button>
+                        </div>
+                        
+                        <div id="deployment-progress" style="display: none;">
+                            <div class="alert alert-info">
+                                <strong>Deployment in Progress...</strong>
+                                <div class="loading" style="margin: 20px 0;">
+                                    <div class="spinner"></div>
+                                    <p id="deployment-status">Starting deployment...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="deployment-complete" style="display: none;"></div>
+                        
+                        <details style="margin-top: 20px;">
+                            <summary style="cursor: pointer; font-weight: 600; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                                📋 Manual Deployment Instructions (Alternative)
+                            </summary>
+                            <div class="summary-section" style="margin-top: 15px;">
+                                <p>If you prefer manual deployment, run these commands:</p>
+                                <div class="code-block"><code>cd ${deploymentPathDisplay}
 docker compose up -d
 docker compose logs -f</code></div>
-                            
-                            <p style="margin-top: 20px;"><strong>Service URLs:</strong></p>
+                            </div>
+                        </details>
+                        
+                        <div class="summary-section" style="margin-top: 20px;">
+                            <h3>Service URLs (After Deployment)</h3>
                             <ul>
                                 <li>Pi-hole Primary: <a href="http://${networkConfig.PRIMARY_DNS_IP}/admin" target="_blank">http://${networkConfig.PRIMARY_DNS_IP}/admin</a></li>
                                 <li>Pi-hole Secondary: <a href="http://${networkConfig.SECONDARY_DNS_IP}/admin" target="_blank">http://${networkConfig.SECONDARY_DNS_IP}/admin</a></li>
@@ -1174,9 +1203,13 @@ docker compose logs -f</code></div>
                         </div>
                     `;
                     
+                    // Add event listener for deploy button
+                    document.getElementById('btn-deploy-now').addEventListener('click', deployNow);
+                    
                     btn.textContent = 'Configuration Complete!';
                     btn.classList.remove('btn-success');
                     btn.classList.add('btn-primary');
+                    btn.disabled = true;
                 } else {
                     const resultDiv = document.getElementById('deploy-result');
                     resultDiv.style.display = 'block';
@@ -1201,6 +1234,105 @@ docker compose logs -f</code></div>
                 `;
                 btn.disabled = false;
                 btn.textContent = 'Generate Configuration';
+            }
+        }
+        
+        async function deployNow() {
+            const deployBtn = document.getElementById('btn-deploy-now');
+            const progressDiv = document.getElementById('deployment-progress');
+            const completeDiv = document.getElementById('deployment-complete');
+            const statusText = document.getElementById('deployment-status');
+            
+            // Hide deploy button and show progress
+            deployBtn.style.display = 'none';
+            progressDiv.style.display = 'block';
+            completeDiv.style.display = 'none';
+            
+            try {
+                statusText.textContent = 'Executing deployment...';
+                
+                const response = await fetch('/api/deploy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                // Hide progress
+                progressDiv.style.display = 'none';
+                
+                if (response.ok && data.success) {
+                    // Show success message
+                    let logsHtml = '';
+                    if (data.logs && data.logs.length > 0) {
+                        logsHtml = '<details style="margin-top: 15px;"><summary style="cursor: pointer; font-weight: 600;">View Deployment Logs</summary><div class="code-block" style="margin-top: 10px;"><code>' + 
+                            data.logs.join('\n') + '</code></div></details>';
+                    }
+                    
+                    let urlsHtml = '';
+                    if (data.urls) {
+                        urlsHtml = `
+                            <div style="margin-top: 20px;">
+                                <h4>🎉 Access Your Services:</h4>
+                                <ul style="list-style: none; padding: 0;">
+                                    <li style="padding: 10px; margin: 5px 0; background: #e8f5e9; border-radius: 5px;">
+                                        <strong>Pi-hole Primary:</strong> <a href="${data.urls.pihole_primary}" target="_blank">${data.urls.pihole_primary}</a>
+                                    </li>
+                                    <li style="padding: 10px; margin: 5px 0; background: #e8f5e9; border-radius: 5px;">
+                                        <strong>Pi-hole Secondary:</strong> <a href="${data.urls.pihole_secondary}" target="_blank">${data.urls.pihole_secondary}</a>
+                                    </li>
+                                    <li style="padding: 10px; margin: 5px 0; background: #e8f5e9; border-radius: 5px;">
+                                        <strong>Grafana:</strong> <a href="${data.urls.grafana}" target="_blank">${data.urls.grafana}</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    
+                    completeDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>✓ Deployment Successful!</strong>
+                            <p>${data.message}</p>
+                            ${urlsHtml}
+                        </div>
+                        ${logsHtml}
+                    `;
+                    completeDiv.style.display = 'block';
+                } else {
+                    // Show error message
+                    let errorDetails = data.error || 'Unknown error occurred';
+                    let logsHtml = '';
+                    if (data.logs && data.logs.length > 0) {
+                        logsHtml = '<details style="margin-top: 15px;" open><summary style="cursor: pointer; font-weight: 600;">Deployment Logs</summary><div class="code-block" style="margin-top: 10px;"><code>' + 
+                            data.logs.join('\n') + '</code></div></details>';
+                    }
+                    
+                    completeDiv.innerHTML = `
+                        <div class="alert alert-error">
+                            <strong>✗ Deployment Failed</strong>
+                            <p>${errorDetails}</p>
+                            <p style="margin-top: 10px;">Please check the logs below or try manual deployment.</p>
+                        </div>
+                        ${logsHtml}
+                    `;
+                    completeDiv.style.display = 'block';
+                    
+                    // Show deploy button again
+                    deployBtn.style.display = 'inline-block';
+                }
+            } catch (error) {
+                console.error('Deployment error:', error);
+                progressDiv.style.display = 'none';
+                completeDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>✗ Deployment Error</strong>
+                        <p>An unexpected error occurred: ${error.message}</p>
+                        <p>Please try manual deployment or check the system logs.</p>
+                    </div>
+                `;
+                completeDiv.style.display = 'block';
+                deployBtn.style.display = 'inline-block';
             }
         }
         

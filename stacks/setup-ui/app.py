@@ -263,46 +263,168 @@ def generate_config():
 
 @app.route('/api/deploy', methods=['POST'])
 def deploy():
-    """Execute deployment"""
+    """Execute deployment automatically"""
     try:
         deployment = session.get('deployment_option', 'HighAvail_2Pi1P1U')
         node_role_config = session.get('node_role_config', {'node_role': 'primary', 'primary_node_ip': ''})
+        network = session.get('network_config', DEFAULT_CONFIG)
         
         # Store deployment status in session
         session['deployment_status'] = 'starting'
+        session['deployment_logs'] = []
+        
+        logs = []
         
         # Get deployment script path
         if deployment == 'HighAvail_1Pi2P2U':
-            script_path = REPO_ROOT / 'deployments' / 'HighAvail_1Pi2P2U'
+            deploy_dir = REPO_ROOT / 'deployments' / 'HighAvail_1Pi2P2U'
         elif deployment == 'HighAvail_2Pi1P1U':
             base_path = REPO_ROOT / 'deployments' / 'HighAvail_2Pi1P1U'
-            # For multi-Pi setups, add node-specific path
             node_role = node_role_config.get('node_role', 'primary')
-            script_path = base_path / ('node1' if node_role == 'primary' else 'node2')
+            deploy_dir = base_path / ('node1' if node_role == 'primary' else 'node2')
         elif deployment == 'HighAvail_2Pi2P2U':
             base_path = REPO_ROOT / 'deployments' / 'HighAvail_2Pi2P2U'
-            # For multi-Pi setups, add node-specific path
             node_role = node_role_config.get('node_role', 'primary')
-            script_path = base_path / ('node1' if node_role == 'primary' else 'node2')
+            deploy_dir = base_path / ('node1' if node_role == 'primary' else 'node2')
         else:
             return jsonify({'success': False, 'error': 'Invalid deployment option'}), 400
         
-        # Return deployment instructions instead of executing
-        # (actual deployment should be done with proper user interaction)
-        return jsonify({
-            'success': True,
-            'message': 'Configuration saved successfully',
-            'deployment_path': str(script_path),
-            'node_role': node_role_config.get('node_role', 'primary'),
-            'next_steps': [
-                f'Navigate to: {script_path}',
-                'Run: docker compose up -d',
-                'Monitor logs: docker compose logs -f',
-            ]
-        })
+        logs.append(f"Deploying to: {deploy_dir}")
         
+        # Step 1: Create Docker network if it doesn't exist
+        logs.append("Checking Docker network...")
+        network_check = subprocess.run(
+            ['docker', 'network', 'inspect', 'dns_net'],
+            capture_output=True,
+            timeout=10
+        )
+        
+        if network_check.returncode != 0:
+            logs.append("Creating macvlan network...")
+            network_create = subprocess.run(
+                [
+                    'docker', 'network', 'create',
+                    '-d', 'macvlan',
+                    f'--subnet={network.get("SUBNET", "192.168.8.0/24")}',
+                    f'--gateway={network.get("GATEWAY", "192.168.8.1")}',
+                    '-o', f'parent={network.get("NETWORK_INTERFACE", "eth0")}',
+                    'dns_net'
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if network_create.returncode == 0:
+                logs.append("✓ Docker network created successfully")
+            else:
+                error_msg = network_create.stderr.strip() if network_create.stderr else "Unknown error"
+                logs.append(f"✗ Network creation failed: {error_msg}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to create Docker network: {error_msg}',
+                    'logs': logs
+                }), 500
+        else:
+            logs.append("✓ Docker network already exists")
+        
+        # Step 2: Navigate to deployment directory and deploy
+        if not deploy_dir.exists():
+            return jsonify({
+                'success': False,
+                'error': f'Deployment directory not found: {deploy_dir}',
+                'logs': logs
+            }), 500
+        
+        logs.append(f"Deploying from: {deploy_dir}")
+        
+        # Step 3: Deploy with docker compose
+        logs.append("Starting docker compose deployment...")
+        deploy_process = subprocess.run(
+            ['docker', 'compose', 'up', '-d'],
+            cwd=str(deploy_dir),
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minute timeout
+        )
+        
+        if deploy_process.returncode == 0:
+            logs.append("✓ Docker Compose deployment successful")
+            logs.append("")
+            logs.append("Deployment Output:")
+            logs.append(deploy_process.stdout)
+            
+            # Wait a bit for containers to start
+            import time
+            time.sleep(5)
+            
+            # Get container status
+            logs.append("")
+            logs.append("Checking container status...")
+            status_process = subprocess.run(
+                ['docker', 'compose', 'ps'],
+                cwd=str(deploy_dir),
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if status_process.returncode == 0:
+                logs.append(status_process.stdout)
+            
+            session['deployment_status'] = 'success'
+            session['deployment_logs'] = logs
+            
+            # Generate access URLs
+            primary_dns = network.get('PRIMARY_DNS_IP', '192.168.8.251')
+            secondary_dns = network.get('SECONDARY_DNS_IP', '192.168.8.252')
+            host_ip = network.get('HOST_IP', '192.168.8.250')
+            
+            return jsonify({
+                'success': True,
+                'message': 'Deployment completed successfully!',
+                'logs': logs,
+                'urls': {
+                    'pihole_primary': f'http://{primary_dns}/admin',
+                    'pihole_secondary': f'http://{secondary_dns}/admin',
+                    'grafana': f'http://{host_ip}:3000'
+                },
+                'deployment_path': str(deploy_dir),
+                'node_role': node_role_config.get('node_role', 'primary')
+            })
+        else:
+            error_output = deploy_process.stderr.strip() if deploy_process.stderr else "Unknown error"
+            logs.append(f"✗ Deployment failed")
+            logs.append("")
+            logs.append("Error Output:")
+            logs.append(error_output)
+            
+            session['deployment_status'] = 'failed'
+            session['deployment_logs'] = logs
+            
+            return jsonify({
+                'success': False,
+                'error': 'Docker Compose deployment failed',
+                'logs': logs,
+                'stderr': error_output
+            }), 500
+            
+    except subprocess.TimeoutExpired:
+        logs.append("✗ Deployment timed out")
+        session['deployment_status'] = 'timeout'
+        return jsonify({
+            'success': False,
+            'error': 'Deployment timed out (took longer than 5 minutes)',
+            'logs': logs
+        }), 500
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        logs.append(f"✗ Unexpected error: {str(e)}")
+        session['deployment_status'] = 'error'
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'logs': logs
+        }), 500
 
 @app.route('/api/deployment-status', methods=['GET'])
 def deployment_status():

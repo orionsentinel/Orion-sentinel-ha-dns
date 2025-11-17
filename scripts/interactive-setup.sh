@@ -455,6 +455,80 @@ configure_passwords() {
     press_enter
 }
 
+# Execute automatic deployment
+execute_deployment() {
+    section "═══ Automatic Deployment ═══"
+    
+    local deployment_path="$REPO_ROOT/deployments/$SELECTED_DEPLOYMENT"
+    local deploy_dir="$deployment_path"
+    
+    # Determine deployment directory based on node count
+    if [[ "$SELECTED_DEPLOYMENT" == "HighAvail_2Pi1P1U" ]] || [[ "$SELECTED_DEPLOYMENT" == "HighAvail_2Pi2P2U" ]]; then
+        deploy_dir="$deployment_path/node1"
+        warn "Multi-Pi setup detected: Deploying PRIMARY node (node1) only"
+        warn "You'll need to manually deploy node2 on the second Raspberry Pi"
+    fi
+    
+    log "Starting automatic deployment..."
+    echo ""
+    
+    # Step 1: Create Docker network
+    info "Creating Docker network..."
+    if docker network inspect dns_net >/dev/null 2>&1; then
+        log "Docker network 'dns_net' already exists"
+    else
+        info "Creating macvlan network..."
+        if docker network create -d macvlan \
+            --subnet="$SUBNET" \
+            --gateway="$GATEWAY" \
+            -o parent="$NETWORK_INTERFACE" \
+            dns_net; then
+            log "Docker network created successfully"
+        else
+            err "Failed to create Docker network"
+            warn "You may need to run: sudo docker network create -d macvlan --subnet=$SUBNET --gateway=$GATEWAY -o parent=$NETWORK_INTERFACE dns_net"
+            return 1
+        fi
+    fi
+    
+    # Step 2: Navigate to deployment directory
+    info "Navigating to deployment directory: $deploy_dir"
+    cd "$deploy_dir" || {
+        err "Failed to navigate to $deploy_dir"
+        return 1
+    }
+    
+    # Step 3: Deploy with docker compose
+    info "Deploying stack with docker compose..."
+    echo ""
+    log "Running: docker compose up -d"
+    echo ""
+    
+    if docker compose up -d; then
+        echo ""
+        log "Deployment successful!"
+    else
+        echo ""
+        err "Deployment failed"
+        warn "You can try manually with: cd $deploy_dir && docker compose up -d"
+        return 1
+    fi
+    
+    # Step 4: Wait for containers to start
+    info "Waiting for containers to start..."
+    sleep 10
+    
+    # Step 5: Show container status
+    echo ""
+    log "Container status:"
+    docker compose ps
+    
+    echo ""
+    log "Deployment complete!"
+    
+    return 0
+}
+
 # Show next steps
 show_next_steps() {
     section "═══ Configuration Complete! ═══"
@@ -463,33 +537,69 @@ show_next_steps() {
     
     log "Configuration has been saved"
     echo ""
-    echo "Next steps:"
+    
+    # Ask if user wants automatic deployment
+    read -r -p "Would you like to deploy automatically now? (Y/n): " deploy_choice
+    echo ""
+    
+    if [[ ! "$deploy_choice" =~ ^[Nn]$ ]]; then
+        # Execute automatic deployment
+        if execute_deployment; then
+            echo ""
+            section "═══ Deployment Successful! ═══"
+            
+            # Show access information
+            case "$SELECTED_DEPLOYMENT" in
+                "HighAvail_1Pi2P2U")
+                    echo "Access your services at:"
+                    echo "  • Pi-hole Primary:   ${CYAN}http://192.168.8.251/admin${NC}"
+                    echo "  • Pi-hole Secondary: ${CYAN}http://192.168.8.252/admin${NC}"
+                    echo "  • Grafana:           ${CYAN}http://192.168.8.250:3000${NC}"
+                    ;;
+                "HighAvail_2Pi1P1U"|"HighAvail_2Pi2P2U")
+                    echo "Primary node deployed successfully!"
+                    echo ""
+                    echo "Access Pi-hole on this node:"
+                    echo "  • ${CYAN}http://192.168.8.251/admin${NC}"
+                    echo ""
+                    warn "Multi-Pi Setup: You need to deploy on the SECOND Pi as well"
+                    echo ""
+                    echo "On the second Raspberry Pi, run:"
+                    echo "  ${CYAN}cd $deployment_path/node2${NC}"
+                    echo "  ${CYAN}docker network create -d macvlan --subnet=$SUBNET --gateway=$GATEWAY -o parent=$NETWORK_INTERFACE dns_net${NC}"
+                    echo "  ${CYAN}docker compose up -d${NC}"
+                    ;;
+            esac
+            
+            echo ""
+            log "Setup wizard complete! 🎉"
+            return 0
+        else
+            err "Automatic deployment failed"
+            echo ""
+        fi
+    fi
+    
+    # Manual deployment instructions
+    echo "Manual deployment instructions:"
     echo ""
     
     case "$SELECTED_DEPLOYMENT" in
         "HighAvail_1Pi2P2U")
-            echo "1. Review the configuration:"
-            echo "   ${CYAN}cd $deployment_path${NC}"
-            echo "   ${CYAN}cat .env${NC}"
+            echo "1. Create the Docker network:"
+            echo "   ${CYAN}docker network create -d macvlan --subnet=$SUBNET --gateway=$GATEWAY -o parent=$NETWORK_INTERFACE dns_net${NC}"
             echo ""
-            echo "2. Create the Docker network:"
-            echo "   ${CYAN}sudo docker network create -d macvlan \\${NC}"
-            echo "   ${CYAN}  --subnet=$SUBNET --gateway=$GATEWAY \\${NC}"
-            echo "   ${CYAN}  -o parent=$NETWORK_INTERFACE dns_net${NC}"
-            echo ""
-            echo "3. Deploy the stack:"
+            echo "2. Deploy the stack:"
             echo "   ${CYAN}cd $deployment_path${NC}"
             echo "   ${CYAN}docker compose up -d${NC}"
             echo ""
-            echo "4. Access Pi-hole admin:"
+            echo "3. Access Pi-hole admin:"
             echo "   ${CYAN}http://192.168.8.251/admin${NC}"
             ;;
             
         "HighAvail_2Pi1P1U")
             echo "1. On THIS Pi (Primary), create the Docker network:"
-            echo "   ${CYAN}sudo docker network create -d macvlan \\${NC}"
-            echo "   ${CYAN}  --subnet=$SUBNET --gateway=$GATEWAY \\${NC}"
-            echo "   ${CYAN}  -o parent=$NETWORK_INTERFACE dns_net${NC}"
+            echo "   ${CYAN}docker network create -d macvlan --subnet=$SUBNET --gateway=$GATEWAY -o parent=$NETWORK_INTERFACE dns_net${NC}"
             echo ""
             echo "2. Deploy on THIS Pi:"
             echo "   ${CYAN}cd $deployment_path/node1${NC}"
@@ -497,19 +607,13 @@ show_next_steps() {
             echo ""
             echo "3. On SECOND Pi, repeat network creation and deploy:"
             echo "   ${CYAN}cd $deployment_path/node2${NC}"
+            echo "   ${CYAN}docker network create -d macvlan --subnet=$SUBNET --gateway=$GATEWAY -o parent=$NETWORK_INTERFACE dns_net${NC}"
             echo "   ${CYAN}docker compose up -d${NC}"
-            echo ""
-            echo "4. Configuration sync is handled automatically via built-in sync containers"
-            echo ""
-            echo "5. Access Pi-hole admin on Primary:"
-            echo "   ${CYAN}http://192.168.8.251/admin${NC}"
             ;;
             
         "HighAvail_2Pi2P2U")
             echo "1. On THIS Pi (Primary), create the Docker network:"
-            echo "   ${CYAN}sudo docker network create -d macvlan \\${NC}"
-            echo "   ${CYAN}  --subnet=$SUBNET --gateway=$GATEWAY \\${NC}"
-            echo "   ${CYAN}  -o parent=$NETWORK_INTERFACE dns_net${NC}"
+            echo "   ${CYAN}docker network create -d macvlan --subnet=$SUBNET --gateway=$GATEWAY -o parent=$NETWORK_INTERFACE dns_net${NC}"
             echo ""
             echo "2. Deploy on THIS Pi:"
             echo "   ${CYAN}cd $deployment_path/node1${NC}"
@@ -517,13 +621,8 @@ show_next_steps() {
             echo ""
             echo "3. On SECOND Pi, repeat network creation and deploy:"
             echo "   ${CYAN}cd $deployment_path/node2${NC}"
+            echo "   ${CYAN}docker network create -d macvlan --subnet=$SUBNET --gateway=$GATEWAY -o parent=$NETWORK_INTERFACE dns_net${NC}"
             echo "   ${CYAN}docker compose up -d${NC}"
-            echo ""
-            echo "4. Configuration sync is handled automatically via built-in sync containers"
-            echo ""
-            echo "5. Access Pi-hole admin:"
-            echo "   ${CYAN}http://192.168.8.251/admin${NC} (Pi #1, Instance 1)"
-            echo "   ${CYAN}http://192.168.8.252/admin${NC} (Pi #1, Instance 2)"
             ;;
     esac
     
