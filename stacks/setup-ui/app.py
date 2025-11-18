@@ -9,6 +9,7 @@ import subprocess
 import json
 import re
 import secrets
+import hashlib
 from pathlib import Path
 from datetime import timedelta
 
@@ -231,8 +232,8 @@ def generate_config():
             'NETWORK_INTERFACE': network.get('NETWORK_INTERFACE'),
             'SUBNET': network.get('SUBNET'),
             'GATEWAY': network.get('GATEWAY'),
-            'WEBPASSWORD': security.get('pihole_password', 'changeme'),
-            'GF_SECURITY_ADMIN_PASSWORD': security.get('grafana_password', 'changeme'),
+            'WEBPASSWORD': hashlib.sha256(str(security.get('pihole_password', 'changeme')).encode()).hexdigest(),
+            'GF_SECURITY_ADMIN_PASSWORD': hashlib.sha256(str(security.get('grafana_password', 'changeme')).encode()).hexdigest(),
         }
         
         # Add Signal configuration if enabled
