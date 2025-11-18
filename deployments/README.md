@@ -1,6 +1,6 @@
 # High Availability DNS Deployment Options
 
-This directory contains **three complete deployment options** for high availability DNS setups on Raspberry Pi.
+This directory contains **four complete deployment options** for high availability DNS setups on Raspberry Pi, including a **VPN Edition** for remote access!
 
 ## 🌟 NEW: Interactive Setup Wizard
 
@@ -32,8 +32,13 @@ If you prefer to choose manually, here's the breakdown:
 ```
 How many Raspberry Pis do you have?
 │
-├─ 1 Pi ──→ Use HighAvail_1Pi2P2U
-│           (Container-level HA only)
+├─ 1 Pi ──→ Do you need remote VPN access?
+│           │
+│           ├─ Yes ──→ Use HighAvail_1Pi2P2U_VPN ⭐ VPN EDITION
+│           │          (HA DNS + WireGuard VPN with QR codes)
+│           │
+│           └─ No  ──→ Use HighAvail_1Pi2P2U
+│                      (Container-level HA only)
 │
 └─ 2 Pis ──→ What level of redundancy do you need?
              │
@@ -45,6 +50,67 @@ How many Raspberry Pis do you have?
 ```
 
 ## Deployment Options
+
+### HighAvail_1Pi2P2U_VPN - Single Pi with VPN ⭐ VPN EDITION
+
+**Architecture:** 1 Raspberry Pi with 2 Pi-hole + 2 Unbound + WireGuard VPN
+
+```
+                  Internet
+                     ↓
+          Router (Port 51820 UDP)
+                     ↓
+┌────────────────────────────────────┐
+│  Raspberry Pi + WireGuard VPN      │
+│  ├── WireGuard Server (QR codes!) │
+│  ├── WireGuard-UI (Web interface) │
+│  ├── Pi-hole Primary               │
+│  ├── Pi-hole Secondary             │
+│  ├── Unbound Primary               │
+│  ├── Unbound Secondary             │
+│  └── Keepalived VIP (192.168.8.255)│
+└────────────────────────────────────┘
+         ↓
+   VPN Clients (phones, laptops)
+   All use VIP for HA DNS!
+```
+
+**Best For:**
+- Remote access to home network
+- Ad-blocking on all devices everywhere
+- Secure access to home services (media servers, NAS)
+- Testing VPN before scaling to 2-Pi
+
+**Pros:**
+- ✅ Simple setup (one device)
+- ✅ Low cost (1 Raspberry Pi)
+- ✅ **VPN with QR codes for instant setup**
+- ✅ **Ad-blocking everywhere via Pi-hole**
+- ✅ **HA DNS with automatic failover**
+- ✅ Container-level redundancy
+- ✅ Access home services remotely
+
+**Cons:**
+- ❌ Single point of failure (hardware)
+- ❌ VPN speed limited by home upload
+- ❌ No protection against power failure
+
+**Requirements:**
+- 1x Raspberry Pi 4/5 (4GB+ RAM recommended)
+- Static IP configuration
+- **Public IP or DDNS hostname (e.g., myhome.duckdns.org)**
+- **Router with port forwarding (UDP 51820)**
+
+**Unique Features:**
+- 📱 **QR codes** for instant mobile setup
+- 🌐 **Web UI** for managing VPN peers
+- 🛡️ **Integrates with HA VIP** (192.168.8.255)
+- 🚀 **Split or full tunnel** options
+- ✅ **Same UX as WireHole** but with HA DNS backend!
+
+**[Go to HighAvail_1Pi2P2U_VPN →](./HighAvail_1Pi2P2U_VPN/)**
+
+---
 
 ### HighAvail_1Pi2P2U - Single Pi, Dual Services
 

@@ -13,17 +13,25 @@ A high-availability DNS stack running on Raspberry Pi 5.
 
 ## 🆕 Choose Your Deployment Option!
 
-This repository now supports **THREE complete deployment options** for different High Availability scenarios:
+This repository now supports **FOUR complete deployment options** for different High Availability scenarios, including a **VPN Edition**!
 
 ### **[📂 View All Deployment Options →](deployments/)**
 
 | Option | Description | Best For |
 |--------|-------------|----------|
 | **[HighAvail_1Pi2P2U](deployments/HighAvail_1Pi2P2U/)** | 1 Pi with 2 Pi-hole + 2 Unbound | Home labs, Testing |
+| **[HighAvail_1Pi2P2U_VPN](deployments/HighAvail_1Pi2P2U_VPN/)** 🆕 ⭐ | 1 Pi with HA DNS + **WireGuard VPN** | **Remote Access + Ad-blocking** |
 | **[HighAvail_2Pi1P1U](deployments/HighAvail_2Pi1P1U/)** ⭐ | 2 Pis with 1 Pi-hole + 1 Unbound each | **Production** (RECOMMENDED) |
 | **[HighAvail_2Pi2P2U](deployments/HighAvail_2Pi2P2U/)** | 2 Pis with 2 Pi-hole + 2 Unbound each | Mission-Critical |
 
 Each deployment option includes complete docker-compose files, configurations, and detailed instructions.
+
+**🆕 VPN Edition Features:**
+- 📱 QR codes for instant mobile setup
+- 🌐 Web UI for managing VPN peers  
+- 🛡️ Integrated with HA VIP (192.168.8.255)
+- 🚀 Remote access to all home services
+- ✅ Ad-blocking everywhere!
 
 **Architecture Documentation:**
 - **[📑 Documentation Index](MULTI_NODE_INDEX.md)** - Navigation guide
