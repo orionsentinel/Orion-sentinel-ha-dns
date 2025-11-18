@@ -14,6 +14,7 @@ from argon2 import PasswordHasher
 from pathlib import Path
 from datetime import timedelta
 import logging
+import traceback
 logging.basicConfig(level=logging.INFO)
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
@@ -79,7 +80,8 @@ def install_prerequisites():
         
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        logging.error(traceback.format_exc())
+        return jsonify({'success': False, 'error': 'An internal error occurred.'}), 500
 
 @app.route('/api/hardware-survey', methods=['GET'])
 def hardware_survey():
