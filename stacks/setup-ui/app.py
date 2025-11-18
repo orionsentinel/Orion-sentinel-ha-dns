@@ -449,11 +449,12 @@ def deploy():
             'logs': logs
         }), 500
     except Exception as e:
-        logs.append(f"✗ Unexpected error: {str(e)}")
+        logging.exception("Unexpected error during deployment")
+        logs.append("✗ Unexpected error occurred")
         session['deployment_status'] = 'error'
         return jsonify({
             'success': False,
-            'error': str(e),
+            'error': 'An unexpected error occurred.',
             'logs': logs
         }), 500
 
