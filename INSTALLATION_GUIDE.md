@@ -151,14 +151,31 @@ cd rpi-ha-dns-stack
 
 ### Step 4: Configure Environment
 
-#### 4.1 Create .env File
+#### 4.1 Generate Secure Passwords
+
+Before creating the `.env` file, generate secure passwords:
+
+```bash
+# Generate Pi-hole admin password
+echo "PIHOLE_PASSWORD=$(openssl rand -base64 32)"
+
+# Generate Grafana admin password
+echo "GRAFANA_ADMIN_PASSWORD=$(openssl rand -base64 32)"
+
+# Generate Keepalived VRRP password
+echo "VRRP_PASSWORD=$(openssl rand -base64 20)"
+```
+
+**Save these passwords securely!** You'll need them to access your services.
+
+#### 4.2 Create .env File
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-#### 4.2 Essential Configuration
-Edit `.env` with your settings:
+#### 4.3 Essential Configuration
+Edit `.env` with your settings (paste the generated passwords from step 4.1):
 
 ```bash
 # Network Configuration
@@ -166,26 +183,56 @@ SUBNET=192.168.8.0/24
 GATEWAY=192.168.8.1
 NETWORK_INTERFACE=eth0
 
-# Pi-hole Configuration
-PIHOLE_PASSWORD=YourSecurePassword123!
-TZ=Europe/London
-
 # IP Addresses (adjust if needed)
-PIHOLE_PRIMARY_IP=192.168.8.251
-PIHOLE_SECONDARY_IP=192.168.8.252
+HOST_IP=192.168.8.250
+PRIMARY_DNS_IP=192.168.8.251
+SECONDARY_DNS_IP=192.168.8.252
 UNBOUND_PRIMARY_IP=192.168.8.253
 UNBOUND_SECONDARY_IP=192.168.8.254
-KEEPALIVED_VIP=192.168.8.255
+VIP_ADDRESS=192.168.8.255
 
-# Monitoring
+# Timezone
+TZ=Europe/London
+
+# Pi-hole Configuration
+# SECURITY: Generate a strong random password
+# Example: openssl rand -base64 32
+PIHOLE_PASSWORD=YourSecurePassword123!
+
+# Grafana
+GRAFANA_ADMIN_USER=admin
+# SECURITY: Generate a strong random password
+# Example: openssl rand -base64 32
 GRAFANA_ADMIN_PASSWORD=YourGrafanaPassword123!
 
-# Signal Notifications (Optional)
-SIGNAL_PHONE=+1234567890
-SIGNAL_API_KEY=your_callmebot_api_key
+# Keepalived
+# SECURITY: Generate a strong random password
+# Example: openssl rand -base64 20
+VRRP_PASSWORD=SecureVRRPPassword123!
+
+# Signal Notifications (Optional - using signal-cli-rest-api)
+SIGNAL_NUMBER=+1234567890
+SIGNAL_RECIPIENTS=+1234567890
 ```
 
-**Important**: Change all passwords from defaults!
+**Important Security Note**: 
+- Replace ALL default passwords with secure ones before deployment!
+- Generate strong passwords using: `openssl rand -base64 32`
+- Never use the example passwords shown above in production
+
+#### 4.4 Validate Configuration
+
+Before proceeding, validate your `.env` file:
+
+```bash
+# Validate required variables and password security
+bash scripts/validate-env.sh
+
+# Test that the .env file can be sourced without errors
+bash scripts/test-env-format.sh
+```
+
+Both scripts should report success. If you see errors, fix them before continuing.
 
 ### Step 5: Create Docker Network
 

@@ -161,6 +161,34 @@ bash scripts/launch-setup-ui.sh
 
 ---
 
+### 🔐 Security Best Practices
+
+**Before deploying**, generate secure passwords:
+
+```bash
+# Generate and save these passwords securely
+echo "PIHOLE_PASSWORD=$(openssl rand -base64 32)"
+echo "GRAFANA_ADMIN_PASSWORD=$(openssl rand -base64 32)"
+echo "VRRP_PASSWORD=$(openssl rand -base64 20)"
+```
+
+**After configuring your .env file**, validate it:
+
+```bash
+# Validate environment configuration
+bash scripts/validate-env.sh
+
+# Test .env file format
+bash scripts/test-env-format.sh
+```
+
+Both validation scripts must pass before deployment to ensure:
+- All required variables are set
+- No default/weak passwords remain
+- Proper file formatting
+
+---
+
 ### Alternative: Terminal-Based Setup
 
 #### 🆕 Option 1: Easy Installer (Recommended) ✨
