@@ -837,7 +837,8 @@ def install_docker():
     except subprocess.TimeoutExpired:
         return {'success': False, 'message': 'Docker installation timed out'}
     except Exception as e:
-        return {'success': False, 'message': f'Docker installation error: {str(e)}'}
+        logging.error("Docker installation error", exc_info=True)
+        return {'success': False, 'message': 'An internal error occurred during Docker installation'}
 
 def install_docker_compose():
     """Install Docker Compose plugin if not present"""
@@ -883,7 +884,8 @@ def install_docker_compose():
     except subprocess.TimeoutExpired:
         return {'success': False, 'message': 'Docker Compose installation timed out'}
     except Exception as e:
-        return {'success': False, 'message': f'Docker Compose installation error: {str(e)}'}
+        logging.error("Docker Compose installation error", exc_info=True)
+        return {'success': False, 'message': 'An internal error occurred during Docker Compose installation'}
 
 def is_valid_ip(ip):
     """Check if string is a valid IP address"""
