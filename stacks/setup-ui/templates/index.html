@@ -399,8 +399,9 @@
                 <div class="wizard-nav-item" data-step="4">Node Role</div>
                 <div class="wizard-nav-item" data-step="5">Network</div>
                 <div class="wizard-nav-item" data-step="6">Security</div>
-                <div class="wizard-nav-item" data-step="7">Notifications</div>
-                <div class="wizard-nav-item" data-step="8">Summary</div>
+                <div class="wizard-nav-item" data-step="7">SSO</div>
+                <div class="wizard-nav-item" data-step="8">Notifications</div>
+                <div class="wizard-nav-item" data-step="9">Summary</div>
             </div>
             
             <div class="wizard-content">
@@ -621,8 +622,63 @@
                     </div>
                 </div>
                 
-                <!-- Step 7: Signal Notifications -->
+                <!-- Step 7: SSO Configuration (Optional) -->
                 <div class="wizard-step" data-step="7">
+                    <h2>Single Sign-On (Optional)</h2>
+                    <p style="color: #666; margin-bottom: 20px;">Enable centralized authentication with Authelia:</p>
+                    
+                    <div class="alert alert-info">
+                        <strong>What is SSO?</strong> Single Sign-On allows you to log in once and access all services 
+                        (Pi-hole, Grafana, WireGuard-UI) with one set of credentials. It also provides 2FA support.
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="sso_enabled">
+                        <label for="sso_enabled">Enable Single Sign-On (SSO)</label>
+                    </div>
+                    
+                    <div id="sso-config" style="display: none;">
+                        <div class="form-group">
+                            <label for="sso_admin_email">Admin User Email</label>
+                            <input type="email" id="sso_admin_email" value="admin@rpi-dns-stack.local">
+                            <div class="help-text">Email address for the SSO admin user</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="sso_admin_displayname">Admin Display Name</label>
+                            <input type="text" id="sso_admin_displayname" value="Admin User">
+                            <div class="help-text">Display name for the SSO admin user</div>
+                        </div>
+                        
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="sso_enable_2fa" checked>
+                            <label for="sso_enable_2fa">Require Two-Factor Authentication (2FA)</label>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <strong>SSO Features:</strong>
+                            <ul style="margin: 10px 0 0 20px;">
+                                <li>Single login for all services</li>
+                                <li>Two-Factor Authentication (TOTP, WebAuthn)</li>
+                                <li>Centralized session management</li>
+                                <li>Brute force protection</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <strong>Note:</strong> SSO will be deployed after the main stack. 
+                            The admin password will be the same as your Pi-hole password for simplicity.
+                        </div>
+                    </div>
+                    
+                    <div class="wizard-actions">
+                        <button class="btn btn-secondary btn-prev">← Previous</button>
+                        <button class="btn btn-primary" id="btn-next-6">Next →</button>
+                    </div>
+                </div>
+                
+                <!-- Step 8: Signal Notifications -->
+                <div class="wizard-step" data-step="8">
                     <h2>Signal Notifications (Optional)</h2>
                     <p style="color: #666; margin-bottom: 20px;">Configure Signal notifications for alerts and status updates:</p>
                     
@@ -652,12 +708,12 @@
                     
                     <div class="wizard-actions">
                         <button class="btn btn-secondary btn-prev">← Previous</button>
-                        <button class="btn btn-primary" id="btn-next-6">Next →</button>
+                        <button class="btn btn-primary" id="btn-next-8">Next →</button>
                     </div>
                 </div>
                 
-                <!-- Step 7: Summary and Deploy -->
-                <div class="wizard-step" data-step="8">
+                <!-- Step 9: Summary and Deploy -->
+                <div class="wizard-step" data-step="9">
                     <h2>Configuration Summary</h2>
                     <p style="color: #666; margin-bottom: 20px;">Review your configuration and generate the setup files:</p>
                     
@@ -681,7 +737,7 @@
     <script>
         // State management
         let currentStep = 1;
-        const totalSteps = 8;
+        const totalSteps = 9;
         let completedSteps = new Set();
         let configData = {};
         
@@ -704,7 +760,8 @@
             document.getElementById('btn-next-7').addEventListener('click', saveNodeRole);
             document.getElementById('btn-next-4').addEventListener('click', saveNetworkConfig);
             document.getElementById('btn-next-5').addEventListener('click', saveSecurityConfig);
-            document.getElementById('btn-next-6').addEventListener('click', saveSignalConfig);
+            document.getElementById('btn-next-6').addEventListener('click', saveSSOConfig);
+            document.getElementById('btn-next-8').addEventListener('click', saveSignalConfig);
             document.getElementById('btn-generate').addEventListener('click', generateConfig);
             
             // Deployment options
@@ -719,6 +776,11 @@
             document.getElementById('node_role').addEventListener('change', function() {
                 document.getElementById('secondary-node-config').style.display = 
                     this.value === 'secondary' ? 'block' : 'none';
+            });
+            
+            // SSO toggle
+            document.getElementById('sso_enabled').addEventListener('change', function() {
+                document.getElementById('sso-config').style.display = this.checked ? 'block' : 'none';
             });
             
             // Signal toggle
@@ -764,7 +826,7 @@
                 loadStep2Hardware();
             } else if (step === 5) {
                 loadNetworkConfig();
-            } else if (step === 8) {
+            } else if (step === 9) {
                 loadSummary();
             }
             
@@ -1038,6 +1100,31 @@
             }
         }
         
+        async function saveSSOConfig() {
+            const enabled = document.getElementById('sso_enabled').checked;
+            const config = {
+                enabled,
+                admin_email: enabled ? document.getElementById('sso_admin_email').value : '',
+                admin_displayname: enabled ? document.getElementById('sso_admin_displayname').value : '',
+                enable_2fa: enabled ? document.getElementById('sso_enable_2fa').checked : false,
+            };
+            
+            try {
+                const response = await fetch('/api/sso-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                if (response.ok) {
+                    configData.sso = config;
+                    goToStep(8);
+                }
+            } catch (error) {
+                console.error('Error saving SSO config:', error);
+            }
+        }
+        
         async function saveSignalConfig() {
             const enabled = document.getElementById('signal_enabled').checked;
             const config = {
@@ -1055,7 +1142,7 @@
                 
                 if (response.ok) {
                     configData.signal = config;
-                    goToStep(8);
+                    goToStep(9);
                 }
             } catch (error) {
                 console.error('Error saving signal config:', error);
@@ -1066,10 +1153,11 @@
             const summaryDiv = document.getElementById('config-summary');
             
             // Fetch current configs
-            const [deployment, nodeRole, network, signal] = await Promise.all([
+            const [deployment, nodeRole, network, sso, signal] = await Promise.all([
                 fetch('/api/deployment-option').then(r => r.json()),
                 fetch('/api/node-role').then(r => r.json()),
                 fetch('/api/network-config').then(r => r.json()),
+                fetch('/api/sso-config').then(r => r.json()),
                 fetch('/api/signal-config').then(r => r.json())
             ]);
             
@@ -1105,6 +1193,17 @@
             html += '<div class="summary-item"><span class="summary-label">Pi-hole Password:</span><span class="summary-value">••••••••</span></div>';
             html += '<div class="summary-item"><span class="summary-label">Grafana Password:</span><span class="summary-value">••••••••</span></div>';
             html += '</div>';
+            
+            // SSO
+            if (sso.enabled) {
+                html += '<div class="summary-section">';
+                html += '<h3>Single Sign-On (SSO)</h3>';
+                html += '<div class="summary-item"><span class="summary-label">Status:</span><span class="summary-value">Enabled ✓</span></div>';
+                html += `<div class="summary-item"><span class="summary-label">Admin Email:</span><span class="summary-value">${sso.admin_email}</span></div>`;
+                html += `<div class="summary-item"><span class="summary-label">Admin Name:</span><span class="summary-value">${sso.admin_displayname}</span></div>`;
+                html += `<div class="summary-item"><span class="summary-label">2FA Required:</span><span class="summary-value">${sso.enable_2fa ? 'Yes' : 'No'}</span></div>`;
+                html += '</div>';
+            }
             
             // Signal
             if (signal.enabled) {
