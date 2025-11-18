@@ -10,6 +10,7 @@ import json
 import re
 import secrets
 import hashlib
+from argon2 import PasswordHasher
 from pathlib import Path
 from datetime import timedelta
 
@@ -233,7 +234,7 @@ def generate_config():
             'SUBNET': network.get('SUBNET'),
             'GATEWAY': network.get('GATEWAY'),
             'WEBPASSWORD': hashlib.sha256(str(security.get('pihole_password', 'changeme')).encode()).hexdigest(),
-            'GF_SECURITY_ADMIN_PASSWORD': hashlib.sha256(str(security.get('grafana_password', 'changeme')).encode()).hexdigest(),
+            'GF_SECURITY_ADMIN_PASSWORD': PasswordHasher().hash(str(security.get('grafana_password', 'changeme'))),
         }
         
         # Add Signal configuration if enabled
