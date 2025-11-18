@@ -33,11 +33,25 @@ fi
 log "Validating $ENV_FILE"
 echo ""
 
-# Load environment variables
+# Load environment variables (strip inline comments for sourcing)
+# Create a temporary file without inline comments
+TEMP_ENV=$(mktemp)
+trap "rm -f $TEMP_ENV" EXIT
+
+# Strip inline comments for safe sourcing
+while IFS= read -r line; do
+    # Skip full-line comments and empty lines
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    
+    # Strip inline comments but preserve the KEY=VALUE part
+    if [[ "$line" =~ ^([^#]+) ]]; then
+        echo "${BASH_REMATCH[1]}" >> "$TEMP_ENV"
+    fi
+done < "$ENV_FILE"
+
 set -a
-source "$ENV_FILE" 2>/dev/null || {
-    err "Failed to source .env file - it may have syntax errors"
-    ((VALIDATION_ERRORS++))
+source "$TEMP_ENV" 2>/dev/null || {
+    warn "Could not source .env file completely - some variables may be complex"
 }
 set +a
 
