@@ -148,7 +148,7 @@ def test_notification():
             
     except Exception as e:
         logger.error(f"Error sending test notification: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'An internal error occurred'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
