@@ -289,7 +289,8 @@ def generate_config():
         })
         
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        logging.exception("Error generating .env file")
+        return jsonify({'success': False, 'error': "An internal error has occurred."}), 500
 
 @app.route('/api/deploy', methods=['POST'])
 def deploy():
