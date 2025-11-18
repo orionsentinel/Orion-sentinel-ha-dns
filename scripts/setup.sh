@@ -9,7 +9,8 @@ IFS=$'\n\t'
 # Trap errors and provide helpful messages
 trap 'echo -e "\n${RED}[ERROR]${NC} An error occurred. Installation aborted." >&2; exit 1' ERR
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Ensure we get the repository root correctly
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || (cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd))"
 ENV_FILE="$REPO_ROOT/.env"
 ENV_EXAMPLE="$REPO_ROOT/.env.example"
 
@@ -193,52 +194,84 @@ configure_prometheus() {
     echo
 }
 
+validate_env_file() {
+    log "Validating .env file format..."
+    
+    local validation_errors=0
+    local line_num=0
+    
+    while IFS= read -r line; do
+        ((line_num++))
+        
+        # Skip empty lines and comments
+        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+        
+        # Check if line matches KEY=VALUE format
+        if ! [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*=.*$ ]]; then
+            err "Line $line_num: Invalid format: $line"
+            ((validation_errors++))
+        fi
+    done < "$ENV_FILE"
+    
+    if [[ $validation_errors -gt 0 ]]; then
+        err "Environment file validation failed with $validation_errors errors"
+        err "Please check $ENV_FILE for formatting issues"
+        exit 1
+    fi
+    
+    log "Environment file validation passed"
+}
+
 create_env_file() {
     log "Creating .env file with your configuration..."
     
-    cat > "$ENV_FILE" << EOF
-# Network Configuration
-HOST_IP=$HOST_IP
-PRIMARY_DNS_IP=$PRIMARY_DNS_IP
-SECONDARY_DNS_IP=$SECONDARY_DNS_IP
-VIP_ADDRESS=$VIP_ADDRESS
-NETWORK_INTERFACE=$NETWORK_INTERFACE
-SUBNET=$SUBNET
-GATEWAY=$GATEWAY
+    # Use printf with proper quoting to prevent shell expansion issues
+    {
+        echo "# Network Configuration"
+        printf 'HOST_IP=%s\n' "$HOST_IP"
+        printf 'PRIMARY_DNS_IP=%s\n' "$PRIMARY_DNS_IP"
+        printf 'SECONDARY_DNS_IP=%s\n' "$SECONDARY_DNS_IP"
+        printf 'VIP_ADDRESS=%s\n' "$VIP_ADDRESS"
+        printf 'NETWORK_INTERFACE=%s\n' "$NETWORK_INTERFACE"
+        printf 'SUBNET=%s\n' "$SUBNET"
+        printf 'GATEWAY=%s\n' "$GATEWAY"
+        echo ""
+        echo "# Timezone"
+        printf 'TZ=%s\n' "$TZ"
+        echo ""
+        echo "# Pi-hole Configuration"
+        printf 'PIHOLE_PASSWORD=%s\n' "$PIHOLE_PASSWORD"
+        echo "PIHOLE_DNS1=127.0.0.1#5335"
+        echo "PIHOLE_DNS2=127.0.0.1#5335"
+        echo 'WEBPASSWORD=${PIHOLE_PASSWORD}'
+        echo ""
+        echo "# Grafana"
+        printf 'GRAFANA_ADMIN_USER=%s\n' "$GRAFANA_ADMIN_USER"
+        printf 'GRAFANA_ADMIN_PASSWORD=%s\n' "$GRAFANA_ADMIN_PASSWORD"
+        echo ""
+        echo "# Signal Notifications (using signal-cli-rest-api)"
+        printf 'SIGNAL_NUMBER=%s\n' "$SIGNAL_NUMBER"
+        printf 'SIGNAL_RECIPIENTS=%s\n' "$SIGNAL_RECIPIENTS"
+        echo ""
+        echo "# Keepalived"
+        printf 'VRRP_PASSWORD=%s\n' "$VRRP_PASSWORD"
+        echo ""
+        echo "# AI-Watchdog"
+        printf 'WATCHDOG_CHECK_INTERVAL=%s\n' "$WATCHDOG_CHECK_INTERVAL"
+        echo "WATCHDOG_RESTART_THRESHOLD=3"
+        echo "WATCHDOG_ALERT_COOLDOWN=300"
+        echo ""
+        echo "# Prometheus"
+        printf 'PROMETHEUS_RETENTION=%s\n' "$PROMETHEUS_RETENTION"
+        echo ""
+        echo "# Docker Networks"
+        echo "OBSERVABILITY_NETWORK=observability_net"
+        echo "DNS_NETWORK=dns_net"
+    } > "$ENV_FILE"
 
-# Timezone
-TZ=$TZ
-
-# Pi-hole Configuration
-PIHOLE_PASSWORD=$PIHOLE_PASSWORD
-PIHOLE_DNS1=127.0.0.1#5335
-PIHOLE_DNS2=127.0.0.1#5335
-WEBPASSWORD=\${PIHOLE_PASSWORD}
-
-# Grafana
-GRAFANA_ADMIN_USER=$GRAFANA_ADMIN_USER
-GRAFANA_ADMIN_PASSWORD=$GRAFANA_ADMIN_PASSWORD
-
-# Signal Notifications (using signal-cli-rest-api)
-SIGNAL_NUMBER=$SIGNAL_NUMBER
-SIGNAL_RECIPIENTS=$SIGNAL_RECIPIENTS
-
-# Keepalived
-VRRP_PASSWORD=$VRRP_PASSWORD
-
-# AI-Watchdog
-WATCHDOG_CHECK_INTERVAL=$WATCHDOG_CHECK_INTERVAL
-WATCHDOG_RESTART_THRESHOLD=3
-WATCHDOG_ALERT_COOLDOWN=300
-
-# Prometheus
-PROMETHEUS_RETENTION=$PROMETHEUS_RETENTION
-
-# Docker Networks
-OBSERVABILITY_NETWORK=observability_net
-DNS_NETWORK=dns_net
-EOF
-
+    # Validate the generated .env file
+    validate_env_file
+    
     log "Configuration saved to $ENV_FILE"
     echo
 }

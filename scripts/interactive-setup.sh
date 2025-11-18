@@ -9,7 +9,8 @@ IFS=$'\n\t'
 # Trap errors and provide helpful messages
 trap 'echo -e "\n${RED}[ERROR]${NC} An error occurred. Setup aborted." >&2; exit 1' ERR
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Ensure we get the repository root correctly
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || (cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd))"
 
 # Colors for output
 RED='\033[0;31m'
@@ -716,25 +717,25 @@ create_env_files() {
     
     case "$SELECTED_DEPLOYMENT" in
         "HighAvail_1Pi2P2U")
-            cat > "$deployment_path/.env" << EOF
-# Network Configuration
-NETWORK_INTERFACE=$NETWORK_INTERFACE
-SUBNET=$SUBNET
-GATEWAY=$GATEWAY
-VIP_ADDRESS=192.168.8.255
-
-# Timezone
-TZ=$TZ
-
-# Pi-hole Configuration
-PIHOLE_PASSWORD=$PIHOLE_PASSWORD
-
-# Grafana Configuration
-GRAFANA_ADMIN_PASSWORD=$GRAFANA_PASSWORD
-
-# Sync Configuration
-SYNC_INTERVAL=300
-EOF
+            {
+                echo "# Network Configuration"
+                printf 'NETWORK_INTERFACE=%s\n' "$NETWORK_INTERFACE"
+                printf 'SUBNET=%s\n' "$SUBNET"
+                printf 'GATEWAY=%s\n' "$GATEWAY"
+                echo "VIP_ADDRESS=192.168.8.255"
+                echo ""
+                echo "# Timezone"
+                printf 'TZ=%s\n' "$TZ"
+                echo ""
+                echo "# Pi-hole Configuration"
+                printf 'PIHOLE_PASSWORD=%s\n' "$PIHOLE_PASSWORD"
+                echo ""
+                echo "# Grafana Configuration"
+                printf 'GRAFANA_ADMIN_PASSWORD=%s\n' "$GRAFANA_PASSWORD"
+                echo ""
+                echo "# Sync Configuration"
+                echo "SYNC_INTERVAL=300"
+            } > "$deployment_path/.env"
             log "Created: $deployment_path/.env"
             ;;
             
@@ -745,61 +746,61 @@ EOF
                 vip="192.168.8.259"
             fi
             
-            cat > "$deployment_path/node1/.env" << EOF
-# Node Configuration
-NODE_ROLE=primary
-NODE_IP=192.168.8.11
-PEER_IP=192.168.8.12
-
-# Network Configuration
-NETWORK_INTERFACE=$NETWORK_INTERFACE
-SUBNET=$SUBNET
-GATEWAY=$GATEWAY
-VIP_ADDRESS=$vip
-
-# Timezone
-TZ=$TZ
-
-# Pi-hole Configuration
-PIHOLE_PASSWORD=$PIHOLE_PASSWORD
-
-# Keepalived Configuration
-KEEPALIVED_PRIORITY=100
-VIRTUAL_ROUTER_ID=51
-VRRP_PASSWORD=$VRRP_PASSWORD
-
-# Sync Configuration
-SYNC_INTERVAL=300
-EOF
+            {
+                echo "# Node Configuration"
+                echo "NODE_ROLE=primary"
+                echo "NODE_IP=192.168.8.11"
+                echo "PEER_IP=192.168.8.12"
+                echo ""
+                echo "# Network Configuration"
+                printf 'NETWORK_INTERFACE=%s\n' "$NETWORK_INTERFACE"
+                printf 'SUBNET=%s\n' "$SUBNET"
+                printf 'GATEWAY=%s\n' "$GATEWAY"
+                printf 'VIP_ADDRESS=%s\n' "$vip"
+                echo ""
+                echo "# Timezone"
+                printf 'TZ=%s\n' "$TZ"
+                echo ""
+                echo "# Pi-hole Configuration"
+                printf 'PIHOLE_PASSWORD=%s\n' "$PIHOLE_PASSWORD"
+                echo ""
+                echo "# Keepalived Configuration"
+                echo "KEEPALIVED_PRIORITY=100"
+                echo "VIRTUAL_ROUTER_ID=51"
+                printf 'VRRP_PASSWORD=%s\n' "$VRRP_PASSWORD"
+                echo ""
+                echo "# Sync Configuration"
+                echo "SYNC_INTERVAL=300"
+            } > "$deployment_path/node1/.env"
             log "Created: $deployment_path/node1/.env"
             
             # Node 2 (Secondary)
-            cat > "$deployment_path/node2/.env" << EOF
-# Node Configuration
-NODE_ROLE=secondary
-NODE_IP=192.168.8.12
-PEER_IP=192.168.8.11
-
-# Network Configuration
-NETWORK_INTERFACE=$NETWORK_INTERFACE
-SUBNET=$SUBNET
-GATEWAY=$GATEWAY
-VIP_ADDRESS=$vip
-
-# Timezone
-TZ=$TZ
-
-# Pi-hole Configuration
-PIHOLE_PASSWORD=$PIHOLE_PASSWORD
-
-# Keepalived Configuration
-KEEPALIVED_PRIORITY=90
-VIRTUAL_ROUTER_ID=51
-VRRP_PASSWORD=$VRRP_PASSWORD
-
-# Sync Configuration
-SYNC_INTERVAL=300
-EOF
+            {
+                echo "# Node Configuration"
+                echo "NODE_ROLE=secondary"
+                echo "NODE_IP=192.168.8.12"
+                echo "PEER_IP=192.168.8.11"
+                echo ""
+                echo "# Network Configuration"
+                printf 'NETWORK_INTERFACE=%s\n' "$NETWORK_INTERFACE"
+                printf 'SUBNET=%s\n' "$SUBNET"
+                printf 'GATEWAY=%s\n' "$GATEWAY"
+                printf 'VIP_ADDRESS=%s\n' "$vip"
+                echo ""
+                echo "# Timezone"
+                printf 'TZ=%s\n' "$TZ"
+                echo ""
+                echo "# Pi-hole Configuration"
+                printf 'PIHOLE_PASSWORD=%s\n' "$PIHOLE_PASSWORD"
+                echo ""
+                echo "# Keepalived Configuration"
+                echo "KEEPALIVED_PRIORITY=90"
+                echo "VIRTUAL_ROUTER_ID=51"
+                printf 'VRRP_PASSWORD=%s\n' "$VRRP_PASSWORD"
+                echo ""
+                echo "# Sync Configuration"
+                echo "SYNC_INTERVAL=300"
+            } > "$deployment_path/node2/.env"
             log "Created: $deployment_path/node2/.env"
             ;;
     esac
