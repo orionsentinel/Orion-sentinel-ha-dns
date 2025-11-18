@@ -233,7 +233,7 @@ def generate_config():
             'NETWORK_INTERFACE': network.get('NETWORK_INTERFACE'),
             'SUBNET': network.get('SUBNET'),
             'GATEWAY': network.get('GATEWAY'),
-            'WEBPASSWORD': hashlib.sha256(str(security.get('pihole_password', 'changeme')).encode()).hexdigest(),
+            'WEBPASSWORD': PasswordHasher().hash(str(security.get('pihole_password', 'changeme'))),
             'GF_SECURITY_ADMIN_PASSWORD': PasswordHasher().hash(str(security.get('grafana_password', 'changeme'))),
         }
         
