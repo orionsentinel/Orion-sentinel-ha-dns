@@ -373,6 +373,101 @@ docker compose down
 docker compose up -d
 ```
 
+### Issue: DNS containers unreachable - "host unreachable" errors
+
+**Symptoms:**
+- Cannot reach DNS containers at 192.168.8.251 or 192.168.8.252
+- `dig` commands fail with "communications error" or "host unreachable"
+- Containers are running but not responding
+- Network shows containers have IPs but they're not accessible
+
+**Cause:**
+This issue occurs when the `dns_net` Docker network was created as a **bridge** network instead of a **macvlan** network. This typically happens when running `docker compose up -d` directly without first creating the macvlan network via `install.sh` or `deploy-dns.sh`.
+
+**Why it matters:**
+- Bridge networks don't allow containers to have IPs on the host's subnet (192.168.8.x)
+- Macvlan networks give containers real IPs on the same network as your Pi
+- DNS requires containers to be accessible from other devices on your network
+
+**Quick Check:**
+```bash
+# Check network driver type
+docker network inspect dns_net --format='{{.Driver}}'
+
+# Should output: macvlan
+# If it outputs: bridge  <- This is the problem!
+```
+
+**Quick Fix:**
+```bash
+# Use the automated fix script
+bash scripts/fix-dns-network.sh
+```
+
+**Manual Fix:**
+
+1. **Validate the network:**
+```bash
+bash scripts/validate-network.sh
+```
+
+2. **If network is wrong type, stop containers:**
+```bash
+cd stacks/dns
+docker compose down
+```
+
+3. **Remove incorrect network:**
+```bash
+docker network rm dns_net
+```
+
+4. **Create correct macvlan network:**
+```bash
+# Load your .env settings first
+source .env
+
+# Create macvlan network
+docker network create \
+  -d macvlan \
+  --subnet=${SUBNET:-192.168.8.0/24} \
+  --gateway=${GATEWAY:-192.168.8.1} \
+  -o parent=${NETWORK_INTERFACE:-eth0} \
+  dns_net
+```
+
+5. **Restart the stack:**
+```bash
+cd stacks/dns
+docker compose build keepalived
+docker compose up -d
+```
+
+6. **Verify (from another device, NOT from the Pi):**
+```bash
+dig google.com @192.168.8.255
+```
+
+**Important Note:**
+Due to macvlan networking limitations, you **cannot** access container IPs directly from the Raspberry Pi host itself. You must test DNS queries from another device on your network.
+
+**Prevention:**
+Always use one of these methods to deploy:
+```bash
+# Method 1: Full installation script (recommended for first time)
+bash scripts/install.sh
+
+# Method 2: DNS deployment script (for DNS stack only)
+bash scripts/deploy-dns.sh
+
+# Method 3: Easy installer (interactive)
+bash scripts/easy-install.sh
+```
+
+**Additional Resources:**
+- See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md) for proper deployment steps
+- Run `bash scripts/validate-network.sh` to check network configuration anytime
+
 ---
 
 ## Web UI Issues
