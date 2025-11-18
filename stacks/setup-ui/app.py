@@ -146,6 +146,21 @@ def signal_config():
         'signal_recipients': '',
     }))
 
+@app.route('/api/sso-config', methods=['GET', 'POST'])
+def sso_config():
+    """Get or save SSO configuration"""
+    if request.method == 'POST':
+        config = request.json
+        session['sso_config'] = config
+        return jsonify({'success': True})
+    
+    return jsonify(session.get('sso_config', {
+        'enabled': False,
+        'admin_email': 'admin@rpi-dns-stack.local',
+        'admin_displayname': 'Admin User',
+        'enable_2fa': True,
+    }))
+
 @app.route('/api/deployment-option', methods=['GET', 'POST'])
 def deployment_option():
     """Get or save deployment option"""
@@ -195,6 +210,7 @@ def generate_config():
         network = session.get('network_config', DEFAULT_CONFIG)
         security = session.get('security_config', {})
         signal = session.get('signal_config', {})
+        sso = session.get('sso_config', {})
         deployment = session.get('deployment_option', 'HighAvail_2Pi1P1U')
         node_role_config = session.get('node_role_config', {'node_role': 'primary', 'primary_node_ip': ''})
         
@@ -224,6 +240,11 @@ def generate_config():
             replacements['SIGNAL_NUMBER'] = signal.get('signal_number', '')
             replacements['SIGNAL_RECIPIENTS'] = signal.get('signal_recipients', '')
         
+        # Add SSO configuration if enabled
+        if sso.get('enabled'):
+            replacements['SSO_ADMIN_EMAIL'] = sso.get('admin_email', 'admin@rpi-dns-stack.local')
+            replacements['SSO_ADMIN_DISPLAYNAME'] = sso.get('admin_displayname', 'Admin User')
+        
         # Replace in env content
         for key, value in replacements.items():
             env_content = re.sub(
@@ -240,6 +261,12 @@ def generate_config():
             if node_role_config.get('node_role') == 'secondary' and node_role_config.get('primary_node_ip'):
                 node_role_comment += f"# PRIMARY_NODE_IP={node_role_config.get('primary_node_ip')}\n"
             env_content += node_role_comment
+        
+        # Add SSO enabled flag as comment if enabled
+        if sso.get('enabled'):
+            sso_comment = f"\n# SSO Configuration Enabled\n"
+            sso_comment += f"# SSO_ENABLED=true\n"
+            env_content += sso_comment
         
         # Write .env file
         ENV_FILE.write_text(env_content)
@@ -431,6 +458,142 @@ def deployment_status():
     """Get current deployment status"""
     status = session.get('deployment_status', 'not_started')
     return jsonify({'status': status})
+
+@app.route('/api/deploy-sso', methods=['POST'])
+def deploy_sso():
+    """Deploy SSO stack with Authelia"""
+    try:
+        sso_config = session.get('sso_config', {})
+        security = session.get('security_config', {})
+        network = session.get('network_config', DEFAULT_CONFIG)
+        
+        if not sso_config.get('enabled'):
+            return jsonify({'success': False, 'error': 'SSO is not enabled'}), 400
+        
+        logs = []
+        logs.append("Starting SSO deployment...")
+        
+        # SSO stack directory
+        sso_dir = REPO_ROOT / 'stacks' / 'sso'
+        
+        if not sso_dir.exists():
+            return jsonify({'success': False, 'error': 'SSO stack directory not found'}), 500
+        
+        # Step 1: Generate secrets
+        logs.append("Generating SSO secrets...")
+        secrets_script = sso_dir / 'generate-secrets.sh'
+        
+        if secrets_script.exists():
+            # Run generate-secrets.sh with admin password
+            admin_password = security.get('pihole_password', 'changeme')  # Use same as Pi-hole for simplicity
+            
+            secret_process = subprocess.Popen(
+                ['bash', str(secrets_script)],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=str(sso_dir)
+            )
+            
+            # Provide password inputs
+            stdout, stderr = secret_process.communicate(
+                input=f"{admin_password}\n{admin_password}\n",
+                timeout=60
+            )
+            
+            if secret_process.returncode == 0:
+                logs.append("✓ SSO secrets generated successfully")
+                logs.append(stdout[:500])  # Include first 500 chars of output
+            else:
+                logs.append(f"✗ Failed to generate secrets: {stderr}")
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to generate SSO secrets',
+                    'logs': logs
+                }), 500
+        else:
+            logs.append("⚠ Secrets generation script not found, using defaults")
+        
+        # Step 2: Update configuration with user settings
+        logs.append("Updating SSO configuration...")
+        users_db_file = sso_dir / 'authelia' / 'users_database.yml'
+        
+        if users_db_file.exists():
+            content = users_db_file.read_text()
+            # Update email and display name
+            content = content.replace('admin@rpi-dns-stack.local', sso_config.get('admin_email', 'admin@rpi-dns-stack.local'))
+            content = content.replace('Admin User', sso_config.get('admin_displayname', 'Admin User'))
+            users_db_file.write_text(content)
+            logs.append("✓ User database updated")
+        
+        # Step 3: Deploy SSO stack
+        logs.append("Deploying SSO containers...")
+        deploy_process = subprocess.run(
+            ['docker', 'compose', 'up', '-d'],
+            cwd=str(sso_dir),
+            capture_output=True,
+            text=True,
+            timeout=180
+        )
+        
+        if deploy_process.returncode == 0:
+            logs.append("✓ SSO stack deployed successfully")
+            logs.append(deploy_process.stdout)
+            
+            # Wait for services to start
+            import time
+            time.sleep(5)
+            
+            # Check container status
+            logs.append("")
+            logs.append("Checking SSO container status...")
+            status_process = subprocess.run(
+                ['docker', 'compose', 'ps'],
+                cwd=str(sso_dir),
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if status_process.returncode == 0:
+                logs.append(status_process.stdout)
+            
+            host_ip = network.get('HOST_IP', '192.168.8.250')
+            
+            return jsonify({
+                'success': True,
+                'message': 'SSO deployed successfully!',
+                'logs': logs,
+                'urls': {
+                    'authelia': f'http://{host_ip}:9091',
+                    'oauth2_proxy': f'http://{host_ip}:4180'
+                }
+            })
+        else:
+            logs.append("✗ SSO deployment failed")
+            logs.append(deploy_process.stderr)
+            
+            return jsonify({
+                'success': False,
+                'error': 'SSO deployment failed',
+                'logs': logs
+            }), 500
+            
+    except subprocess.TimeoutExpired:
+        logs.append("✗ SSO deployment timed out")
+        return jsonify({
+            'success': False,
+            'error': 'SSO deployment timed out',
+            'logs': logs
+        }), 500
+    except Exception as e:
+        logs.append(f"✗ Unexpected error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'logs': logs
+        }), 500
 
 # Helper functions
 def check_docker():
