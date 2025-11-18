@@ -56,6 +56,7 @@ Each deployment option includes complete docker-compose files, configurations, a
 - Signal webhook bridge for notifications via CallMeBot.
 - **🆕 WireGuard VPN for secure remote access to home services.**
 - **🆕 Nginx Proxy Manager for exposing services with SSL support.**
+- **🆕 Single Sign-On (SSO) with Authelia for centralized authentication.**
 - Docker + Portainer setup.
 
 ## ASCII Network Diagram 🖥️
@@ -244,6 +245,10 @@ The update script will:
 - **🆕 WireGuard-UI:** [http://192.168.8.250:5000](http://192.168.8.250:5000) - VPN Peer Management
 - **🆕 Nginx Proxy Manager:** [http://192.168.8.250:81](http://192.168.8.250:81) - Reverse Proxy Configuration
 
+### SSO URLs (Optional Stack) 🔐
+- **🆕 Authelia Portal:** [http://192.168.8.250:9091](http://192.168.8.250:9091) - Single Sign-On Authentication
+- **🆕 OAuth2 Proxy:** [http://192.168.8.250:4180](http://192.168.8.250:4180) - Service Proxy Gateway
+
 ## Signal Notifications 📱
 The stack uses [signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api) for self-hosted Signal notifications:
 - **Container restart notifications** from AI-Watchdog
@@ -410,6 +415,115 @@ See **[stacks/remote-access/README.md](stacks/remote-access/README.md)** for:
 - ✅ No port forwarding needed
 - ✅ Works everywhere automatically
 - ✅ Happy users! 🎉
+
+
+## 🔐 Single Sign-On (SSO) - Optional but Powerful!
+
+**Centralized Authentication with Authelia**
+
+Tired of managing separate passwords for Pi-hole, Grafana, and WireGuard-UI? Enable SSO for:
+- 🔑 **One Login for All Services** - Log in once, access everything
+- 🛡️ **Two-Factor Authentication** - TOTP (Google Authenticator) and WebAuthn (YubiKey, TouchID)
+- 👥 **User Management** - Add/remove users from one place
+- 🚨 **Brute Force Protection** - Automatic rate limiting and banning
+- 📊 **Session Control** - Manage active sessions, force logout
+- 🔒 **Fine-grained Access Control** - Configure per-service permissions
+
+### Quick SSO Setup
+
+**Option 1: Use the Web Setup Wizard** (Easiest)
+
+1. Launch the setup wizard:
+   ```bash
+   bash scripts/launch-setup-ui.sh
+   ```
+
+2. Follow the wizard to Step 7 (SSO Configuration)
+3. Enable SSO and configure admin user
+4. Complete the wizard and deploy
+
+**Option 2: Manual Setup**
+
+```bash
+# 1. Generate secrets
+cd stacks/sso
+bash generate-secrets.sh
+
+# 2. Update .env file
+# Add the generated secrets to your .env file
+
+# 3. Deploy SSO stack
+docker compose up -d
+
+# 4. Access Authelia portal
+# http://192.168.8.250:9091
+```
+
+### Integrated Services
+
+| Service | Integration | Access |
+|---------|------------|---------|
+| **Grafana** | Native OAuth2 | Click "Sign in with Authelia" |
+| **Pi-hole** | OAuth2 Proxy | http://192.168.8.250:4180 |
+| **WireGuard-UI** | External Auth | Auto-redirect to Authelia |
+| **Nginx Proxy Manager** | OAuth2 Proxy | Protected endpoints |
+
+### SSO Features
+
+- **Password Policy**: Minimum 12 characters (configurable)
+- **Session Duration**: 1 hour active, 5 minutes inactivity (configurable)
+- **Remember Me**: 30 days (optional)
+- **2FA Methods**: 
+  - TOTP (Google Authenticator, Authy, 1Password, etc.)
+  - WebAuthn (YubiKey, TouchID, Windows Hello, Android fingerprint)
+- **User Groups**: `admins` (full access) and `users` (limited access)
+
+### Documentation
+
+- **[SSO Setup Guide](stacks/sso/README.md)** - Complete SSO documentation
+- **[SSO Integration Guide](SSO_INTEGRATION_GUIDE.md)** - Integrate services with SSO
+- **[Security Best Practices](SECURITY_GUIDE.md)** - Secure your SSO deployment
+
+### Example: Grafana with SSO
+
+Before SSO:
+```
+1. Navigate to http://192.168.8.250:3000
+2. Enter username: admin
+3. Enter password: your_grafana_password
+4. Access Grafana
+```
+
+After SSO:
+```
+1. Navigate to http://192.168.8.250:3000
+2. Click "Sign in with Authelia"
+3. Enter your Authelia credentials (used for ALL services)
+4. Complete 2FA (optional but recommended)
+5. Access Grafana automatically
+```
+
+**Bonus**: Same login works for Pi-hole, WireGuard-UI, and any other integrated service!
+
+### Why Use SSO?
+
+**Security Benefits:**
+- 🔐 One strong password to remember (instead of many)
+- 🛡️ Mandatory 2FA for all services
+- 🚨 Centralized brute force protection
+- 📝 Audit trail of all authentication attempts
+- ⏱️ Automatic session expiration
+
+**Convenience Benefits:**
+- 🎯 Single login for everything
+- 💾 "Remember me" option
+- 📱 Mobile-friendly authentication
+- 🔄 Easy password reset
+- 👥 Team member management
+
+**For Home Users**: SSO might be overkill if you're the only user. But if you have family members or want maximum security, it's awesome!
+
+**For Small Teams**: SSO is perfect for managing access for multiple users without creating separate accounts on each service.
 
 
 ## Conclusion 🏁
