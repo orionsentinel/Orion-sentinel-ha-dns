@@ -4,9 +4,15 @@ A high-availability DNS stack running on Raspberry Pi 5.
 
 ## 📚 Documentation Quick Links
 
+### Getting Started
 - **[🚀 QUICKSTART.md](QUICKSTART.md)** - One-page guide to get started fast
 - **[📖 INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md)** - Detailed installation instructions
-- **[🔧 TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Fix common issues (SSH disconnects, reboots, errors)
+
+### Operations & Maintenance
+- **[📋 OPERATIONAL_RUNBOOK.md](OPERATIONAL_RUNBOOK.md)** - Day-to-day operations guide ⭐ NEW
+- **[🔧 TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Fix common issues
+- **[🚨 DISASTER_RECOVERY.md](DISASTER_RECOVERY.md)** - Recovery procedures ⭐ NEW
+- **[📝 CHANGELOG.md](CHANGELOG.md)** - Track all changes ⭐ NEW
 - **[👤 USER_GUIDE.md](USER_GUIDE.md)** - How to use and maintain the stack
 
 ---
@@ -57,7 +63,6 @@ Each deployment option includes complete docker-compose files, configurations, a
 - **🆕 WireGuard VPN for secure remote access to home services.**
 - **🆕 Nginx Proxy Manager for exposing services with SSL support.**
 - **🆕 Single Sign-On (SSO) with Authelia for centralized authentication.**
-- **🆕 Intrusion Detection System (CrowdSec) for automated security protection.**
 - Docker + Portainer setup.
 
 ## ASCII Network Diagram 🖥️
@@ -112,6 +117,46 @@ This repository provides **three complete deployment configurations**:
 - Automated sync of DNS records with Gravity Sync.
 - Self-healing through AI-Watchdog.
 - **🆕 Multi-node deployment for true hardware redundancy.**
+
+## 🔧 Operational Excellence
+
+**Automation & Monitoring Scripts** ⭐ NEW
+
+We provide production-ready scripts for operational maturity:
+
+### Health Monitoring
+```bash
+# Run weekly health checks
+bash scripts/health-check.sh
+```
+**Checks**: DNS resolution, service health, HA status, disk/memory usage, container health
+
+### Weekly Maintenance
+```bash
+# Automated maintenance tasks
+bash scripts/weekly-maintenance.sh
+```
+**Performs**: Container updates, log cleanup, disk space management, configuration backups, health reports
+
+### Setup Automation
+```bash
+# Add to crontab for automation
+sudo crontab -e
+
+# Weekly health check (Sundays at 2 AM)
+0 2 * * 0 /opt/rpi-ha-dns-stack/scripts/health-check.sh >> /var/log/rpi-dns-health-check.log 2>&1
+
+# Weekly maintenance (Sundays at 3 AM)
+0 3 * * 0 /opt/rpi-ha-dns-stack/scripts/weekly-maintenance.sh >> /var/log/rpi-dns-maintenance.log 2>&1
+```
+
+### Documentation
+- **[OPERATIONAL_RUNBOOK.md](OPERATIONAL_RUNBOOK.md)** - Common issues and solutions
+- **[DISASTER_RECOVERY.md](DISASTER_RECOVERY.md)** - Recovery procedures and RTO/RPO
+- **[CHANGELOG.md](CHANGELOG.md)** - Track all configuration changes
+
+**Philosophy**: Mature systems are boring. They just work. Focus on reliability over features.
+
 
 ## Quick Start Instructions 🚀
 
@@ -569,143 +614,6 @@ After SSO:
 **For Home Users**: SSO might be overkill if you're the only user. But if you have family members or want maximum security, it's awesome!
 
 **For Small Teams**: SSO is perfect for managing access for multiple users without creating separate accounts on each service.
-
-
-## 🛡️ Intrusion Detection System (Optional but Highly Recommended!)
-
-**Protect your entire stack with automated intrusion detection and prevention!**
-
-CrowdSec is a modern, collaborative security system that protects your Pi-hole, SSH, web services, and entire network from attacks. Unlike traditional tools, it uses **crowdsourced threat intelligence** to block attackers before they even reach your system.
-
-### 🎯 Why Add Intrusion Detection?
-
-**Real-World Protection:**
-- 🚨 **Blocks SSH brute-force attacks** automatically (no more failed login spam!)
-- 🔥 **Protects Pi-hole admin panel** from unauthorized access
-- 🛡️ **Guards Grafana dashboards** against exploits
-- 🌐 **Web Application Firewall** blocks SQL injection, XSS, and known CVEs
-- 🌍 **Global threat intelligence** - benefit from attacks detected worldwide
-- ⚡ **Automated response** - no manual intervention needed
-
-**Lightweight & Efficient:**
-- 💚 Only ~100-200MB RAM on Raspberry Pi 5
-- 🚀 Written in Go for maximum performance
-- 📊 Integrated with your existing Prometheus/Grafana monitoring
-- ⏱️ Adds < 2ms latency to network traffic
-
-### 🚀 Quick Start
-
-**Option 1: Automated Setup** (Recommended)
-```bash
-cd stacks/intrusion-detection
-bash setup-crowdsec.sh
-```
-
-**Option 2: Manual Setup**
-```bash
-cd stacks/intrusion-detection
-cp .env.example .env
-docker compose up -d
-```
-
-### 📊 What Gets Protected?
-
-| Service | Protection Type | Automated Response |
-|---------|----------------|-------------------|
-| **SSH** | Brute-force detection | Ban after 5 failed attempts |
-| **Pi-hole** | Admin panel attacks | Block suspicious IPs |
-| **Grafana** | Login attempts, exploits | Instant IP ban |
-| **Nginx** | HTTP attacks, CVEs | WAF blocking + IP ban |
-| **WireGuard** | Connection abuse | Rate limiting |
-| **Authelia** | SSO brute-force | Additional protection layer |
-| **All Services** | Port scans, DDoS | Network-level blocking |
-
-### 🤔 Will My Pi Handle It?
-
-**Raspberry Pi 5 8GB**: Absolutely! ✅ Full protection with minimal overhead
-**Raspberry Pi 5 4GB**: Yes! ✅ Use lightweight configuration
-**Raspberry Pi 4**: Carefully ⚠️ Monitor resources, use minimal scenarios
-
-**Performance Impact:**
-- RAM: +100-200MB (5-10% increase)
-- CPU: +3-8% average usage
-- Network latency: +1-2ms (negligible)
-- DNS query time: +2ms (you won't notice)
-
-### 📚 Documentation
-
-Detailed guides available in `stacks/intrusion-detection/`:
-
-- **[README.md](stacks/intrusion-detection/README.md)** - Complete setup guide
-- **[DECISION_GUIDE.md](stacks/intrusion-detection/DECISION_GUIDE.md)** - Should you add IDS?
-- **[PERFORMANCE_GUIDE.md](stacks/intrusion-detection/PERFORMANCE_GUIDE.md)** - Resource requirements
-- **[PROMETHEUS_INTEGRATION.md](stacks/intrusion-detection/PROMETHEUS_INTEGRATION.md)** - Monitoring setup
-
-### ✅ Key Benefits
-
-**Security:**
-- 🌍 **Crowdsourced intelligence**: Block known attackers globally
-- 🚨 **Real-time alerts**: Know immediately when attacked
-- 🔄 **Automatic updates**: New threat scenarios added regularly
-- 📝 **Detailed logs**: See exactly what was blocked and why
-
-**Ease of Use:**
-- ⚙️ **Automated setup**: One script does everything
-- 📊 **Visual dashboards**: See security metrics in Grafana
-- 🔧 **Low maintenance**: Runs autonomously
-- 🎯 **Smart defaults**: Works great out-of-the-box
-
-**Integration:**
-- 📈 **Prometheus metrics**: Track security events
-- 🔔 **Alertmanager integration**: Get notified of attacks
-- 🐳 **Docker native**: Fits perfectly with existing stack
-- 🔌 **Extensible**: Add custom scenarios easily
-
-### 🎬 See It In Action
-
-```bash
-# View current threats being blocked
-docker exec crowdsec cscli decisions list
-
-# See attack alerts
-docker exec crowdsec cscli alerts list
-
-# Check protection metrics
-docker exec crowdsec cscli metrics
-
-# Test SSH protection (from another machine)
-# Try wrong password 5 times → You'll get banned!
-```
-
-### 💡 Pro Tips
-
-1. **Start with defaults** - They work great for most users
-2. **Monitor the first week** - See what gets blocked
-3. **Whitelist your IPs** - Never lock yourself out
-4. **Enable Grafana dashboard** - Visual security monitoring
-5. **Enroll in CrowdSec Console** (optional) - Get premium blocklists
-
-### 🆚 CrowdSec vs Fail2Ban
-
-Still using Fail2Ban? Here's why CrowdSec is better:
-
-| Feature | CrowdSec | Fail2Ban |
-|---------|----------|----------|
-| **Global threat intelligence** | ✅ Yes | ❌ Local only |
-| **Performance** | 🚀 Excellent (Go) | 🐌 Moderate (Python) |
-| **Docker integration** | ✅ Native | ⚠️ Requires config |
-| **Web protection** | ✅ WAF included | ❌ SSH/system only |
-| **Auto updates** | ✅ Community scenarios | ❌ Manual config |
-| **Proactive blocking** | ✅ Before they attack you | ❌ After attack detected |
-
-**Verdict**: CrowdSec is the modern choice for containerized environments! 🏆
-
-### 🔗 Learn More
-
-- **CrowdSec Website**: https://www.crowdsec.net/
-- **Scenario Hub**: https://hub.crowdsec.net/ (browse protection scenarios)
-- **Documentation**: https://docs.crowdsec.net/
-- **Community**: https://discord.gg/crowdsec
 
 
 ## Conclusion 🏁
