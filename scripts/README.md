@@ -42,7 +42,131 @@ All three methods provide the same configuration options and final result!
 
 ## Available Scripts
 
-### ✓ install-check.sh - Pre-Installation Validation
+### 🚀 Upgrade & Maintenance Scripts
+
+#### smart-upgrade.sh - Intelligent Upgrade System ⭐ NEW
+**Purpose**: Comprehensive upgrade management with safety checks and rollback capability
+
+**Usage**:
+```bash
+# Interactive mode (recommended)
+bash scripts/smart-upgrade.sh -i
+
+# Check for updates only
+bash scripts/smart-upgrade.sh -c
+
+# Perform full system upgrade
+bash scripts/smart-upgrade.sh -u
+
+# Upgrade specific stack
+bash scripts/smart-upgrade.sh -s dns
+
+# Verify system health
+bash scripts/smart-upgrade.sh -v
+
+# Create version tracking file
+bash scripts/smart-upgrade.sh --create-version-file
+```
+
+**Features**:
+- **Pre-upgrade Health Checks**: Validates disk space, Docker status, network connectivity
+- **Automatic Backup**: Creates backup before any upgrade
+- **Selective Upgrades**: Upgrade all stacks or individual components
+- **Post-upgrade Verification**: Tests container health and DNS resolution
+- **Interactive Menu**: User-friendly interface for upgrade operations
+- **Detailed Logging**: All operations logged to `upgrade.log`
+- **Rollback Support**: Easy recovery via backup restore
+
+**What it checks**:
+- Disk space (warns if >85% full)
+- Docker daemon status
+- Network connectivity
+- Running container inventory
+- Container health after upgrade
+- DNS resolution functionality
+
+**When to use**:
+- Regular system updates (recommended monthly)
+- Security patch deployment
+- Major version upgrades
+- Troubleshooting service issues
+
+**See also**: [SMART_UPGRADE_GUIDE.md](../SMART_UPGRADE_GUIDE.md) for complete documentation
+
+---
+
+#### check-updates.sh - Automated Update Checker ⭐ NEW
+**Purpose**: Check for Docker image updates and generate report
+
+**Usage**:
+```bash
+# Check for updates
+bash scripts/check-updates.sh
+
+# View the generated report
+cat update-report.md
+
+# Setup automated daily checks (optional)
+(crontab -l 2>/dev/null; echo "0 3 * * * $(pwd)/scripts/check-updates.sh") | crontab -
+```
+
+**What it does**:
+- Scans all 24+ Docker images used in the stack
+- Compares current vs. latest image digests
+- Generates markdown report with update status
+- Fetches latest version tags from Docker Hub
+- Provides specific upgrade recommendations
+
+**Report includes**:
+- 🟢 Up to date images
+- 🟡 Images with updates available
+- ⚪ Not installed images
+- Recommended upgrade commands
+- Automated update schedule info
+
+**Monitored services**:
+- Core DNS: Pi-hole, Unbound, Cloudflared
+- Monitoring: Grafana, Prometheus, Loki, Promtail
+- Management: Portainer, Homepage, Uptime Kuma, Netdata
+- Security: Authelia, OAuth2 Proxy, Trivy
+- VPN: WireGuard, Tailscale
+- And more...
+
+**When to use**:
+- Before planning upgrades
+- Regular maintenance checks
+- Security audit preparation
+- Version compliance verification
+
+---
+
+#### update.sh - Standard Update Script
+**Purpose**: Traditional update method for the stack
+
+**Usage**:
+```bash
+bash scripts/update.sh
+```
+
+**What it does**:
+- Backs up current configuration
+- Pulls latest changes from git
+- Rebuilds updated containers
+- Restarts services
+- Preserves .env and override files
+
+**When to use**:
+- When you prefer traditional update method
+- As fallback if smart-upgrade has issues
+- For simple git pull + rebuild operations
+
+**Note**: For enhanced safety and features, use `smart-upgrade.sh` instead
+
+---
+
+### 📦 Installation Scripts
+
+#### ✓ install-check.sh - Pre-Installation Validation
 **Purpose**: Check system prerequisites before installation
 
 **Usage**:

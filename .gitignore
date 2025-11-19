@@ -25,3 +25,5 @@ docker-compose.override.yml
 # Signal CLI configuration (contains sensitive keys and registration data)
 stacks/observability/signal-cli-config/*
 !stacks/observability/signal-cli-config/README.md
+*.log
+*-report.md

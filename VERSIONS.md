@@ -4,6 +4,276 @@ This document tracks all changes, improvements, and bug fixes for the RPi HA DNS
 
 ---
 
+## Version 2.4.0 (2024-11-19) - Smart Upgrade System 🚀
+
+### 🎯 Overview
+Major upgrade introducing intelligent update management, automated version tracking, and enhanced upgrade safety mechanisms.
+
+### ✨ New Features
+
+#### 1. Smart Upgrade System (`scripts/smart-upgrade.sh`)
+**Comprehensive upgrade management with safety checks and rollback capability**
+
+**Key Features:**
+- **Interactive Mode**: User-friendly menu for upgrade operations
+- **Pre-upgrade Health Checks**: Validates system state before upgrades
+  - Disk space verification (warns if >85% full)
+  - Docker daemon status check
+  - Network connectivity test
+  - Running container inventory
+- **Automatic Backup**: Creates backup before any upgrade
+- **Selective Upgrades**: Upgrade all stacks or individual components
+- **Post-upgrade Verification**: Validates services after upgrade
+  - Container health checks
+  - DNS resolution tests
+  - Service availability verification
+- **Detailed Logging**: All operations logged to `upgrade.log`
+- **Upgrade Summary**: Clear report of changes and next steps
+
+**Usage:**
+```bash
+# Interactive mode (recommended)
+bash scripts/smart-upgrade.sh -i
+
+# Check for updates
+bash scripts/smart-upgrade.sh -c
+
+# Full system upgrade
+bash scripts/smart-upgrade.sh -u
+
+# Upgrade specific stack
+bash scripts/smart-upgrade.sh -s dns
+```
+
+**Safety Features:**
+- Pre-upgrade backup creation
+- Health checks before and after upgrade
+- Rollback capability via backup restore
+- Container state verification
+- Network and DNS validation
+
+#### 2. Automated Update Checker (`scripts/check-updates.sh`)
+**Docker image update monitoring and reporting**
+
+**Features:**
+- **Comprehensive Scanning**: Checks all 24+ Docker images used in the stack
+- **Update Detection**: Compares current vs. latest image digests
+- **Markdown Report**: Generates detailed update report (`update-report.md`)
+- **Status Indicators**: 🟢 Up to date | 🟡 Update available | ⚪ Not installed
+- **Latest Tag Discovery**: Fetches newest version tags from Docker Hub
+- **Automated Recommendations**: Suggests specific upgrade commands
+
+**Monitored Images:**
+- Core DNS: Pi-hole, Unbound, Cloudflared
+- Monitoring: Grafana, Prometheus, Loki, Promtail, Alertmanager
+- Management: Portainer, Homepage, Uptime Kuma, Netdata, Watchtower
+- Security: Authelia, OAuth2 Proxy, Trivy
+- VPN: WireGuard, WireGuard UI, Tailscale
+- Proxy: Nginx Proxy Manager
+- Communication: Signal CLI API
+- Support: Redis, Alpine, Nginx
+
+**Usage:**
+```bash
+# Manual check
+bash scripts/check-updates.sh
+
+# View report
+cat update-report.md
+
+# Setup automated daily checks (via cron)
+# Add to crontab: 0 3 * * * /path/to/check-updates.sh
+```
+
+#### 3. Version Tracking System
+**Centralized version management**
+
+**File: `.versions.yml`**
+- Tracks all service images and versions
+- Auto-update flags per service
+- Stack version tracking (now 2.4.0)
+- Upgrade notes and changelog
+- Enables future automatic version pinning
+
+**Benefits:**
+- Know exactly what versions are deployed
+- Control which services auto-update
+- Track upgrade history
+- Simplified dependency management
+
+### 🔧 Enhanced Capabilities
+
+#### Upgrade Workflow Improvements
+**Old Process:**
+```bash
+git pull
+docker compose pull
+docker compose up -d
+# Hope everything works...
+```
+
+**New Process:**
+```bash
+bash scripts/smart-upgrade.sh -u
+# ✓ Health check passed
+# ✓ Backup created
+# ✓ Updates checked
+# ✓ Images pulled
+# ✓ Containers upgraded
+# ✓ Services verified
+# ✓ Summary displayed
+```
+
+#### Pre-upgrade Safety Checks
+- **Disk Space**: Warns if <15% free
+- **Docker Status**: Ensures daemon is running
+- **Network**: Verifies internet connectivity
+- **Service State**: Counts running containers
+- **User Confirmation**: Requires approval before changes
+
+#### Post-upgrade Validation
+- **Container Health**: Checks all healthcheck statuses
+- **DNS Resolution**: Tests both Pi-hole instances
+- **Service Availability**: Confirms critical services running
+- **Log Analysis**: Checks for startup errors
+
+### 📊 Statistics
+
+**New Files Created:**
+- `scripts/smart-upgrade.sh` (520 lines)
+- `scripts/check-updates.sh` (220 lines)
+- `.versions.yml` (template)
+
+**Upgrade Features:**
+- 24+ Docker images monitored
+- 7 upgrade modes (interactive, check, full, stack, verify, etc.)
+- 5 pre-upgrade checks
+- 3 post-upgrade validations
+- 1-click rollback capability
+
+### 🎯 Use Cases
+
+#### Scenario 1: Regular Maintenance
+```bash
+# Every Sunday morning
+bash scripts/check-updates.sh
+# Review update-report.md
+# If updates available:
+bash scripts/smart-upgrade.sh -u
+```
+
+#### Scenario 2: Emergency Update
+```bash
+# Critical security patch for Pi-hole
+bash scripts/smart-upgrade.sh -s dns
+# Fast, targeted upgrade
+```
+
+#### Scenario 3: Version Audit
+```bash
+# What versions am I running?
+cat .versions.yml
+# Check for updates
+bash scripts/check-updates.sh
+```
+
+### 🔒 Security Benefits
+
+- **Vulnerability Management**: Easy update process reduces exposure window
+- **Version Control**: Know exactly what's deployed
+- **Audit Trail**: Upgrade log for compliance
+- **Rollback**: Quick recovery from bad updates
+- **Automated Checks**: Daily update monitoring (optional)
+
+### 📚 Documentation Updates
+
+**Updated:**
+- `VERSIONS.md` - This file, with v2.4.0 details
+- `README.md` - Will include smart upgrade references
+
+**Integration:**
+- Works with existing `scripts/update.sh`
+- Compatible with `scripts/automated-backup.sh`
+- Complements `scripts/health-check.sh`
+- Integrates with `scripts/weekly-maintenance.sh`
+
+### 🚀 Upgrade Instructions
+
+**From v2.3.x to v2.4.0:**
+
+1. **Pull latest changes:**
+   ```bash
+   cd ~/rpi-ha-dns-stack
+   git pull
+   ```
+
+2. **Make scripts executable:**
+   ```bash
+   chmod +x scripts/smart-upgrade.sh
+   chmod +x scripts/check-updates.sh
+   ```
+
+3. **Try the new system:**
+   ```bash
+   # Check for updates
+   bash scripts/smart-upgrade.sh -c
+   
+   # Or use interactive mode
+   bash scripts/smart-upgrade.sh -i
+   ```
+
+4. **Optional: Setup automated checks:**
+   ```bash
+   # Add to crontab
+   (crontab -l 2>/dev/null; echo "0 3 * * * $(pwd)/scripts/check-updates.sh") | crontab -
+   ```
+
+### 💡 Future Enhancements
+
+**Planned for v2.5.0:**
+- Automatic version pinning (replace `:latest` with specific tags)
+- Integration with Watchtower for selective auto-updates
+- Email notifications for available updates
+- Web UI for upgrade management
+- A/B deployment for zero-downtime upgrades
+- Integration with GitHub Releases for update notifications
+
+### ⚠️ Breaking Changes
+
+**None** - This is a backwards-compatible feature addition.
+
+Existing upgrade workflows continue to work:
+- `bash scripts/update.sh` - Still functional
+- Manual `docker compose pull && up -d` - Still works
+- All existing stacks - No changes required
+
+### 🔍 Known Limitations
+
+1. **Update Detection**: Requires internet connectivity to check Docker Hub
+2. **Digest Comparison**: Only detects changes, not version numbers
+3. **Multi-arch**: Digest comparison may vary across architectures
+4. **Rate Limits**: Docker Hub API has rate limits (mitigated by caching)
+
+### 🎉 Benefits Summary
+
+**Before v2.4.0:**
+- ❌ Manual upgrade process
+- ❌ No update notifications
+- ❌ No pre-upgrade validation
+- ❌ Risky upgrade process
+- ❌ No upgrade history
+
+**After v2.4.0:**
+- ✅ Automated upgrade system
+- ✅ Daily update checks
+- ✅ Comprehensive health checks
+- ✅ Safe upgrade with rollback
+- ✅ Complete upgrade logging
+- ✅ Version tracking
+- ✅ Update reports
+
+---
+
 ## Version 2.3.1 (2024-11-17) - Predictive AI Watchdog
 
 ### 🤖 AI Watchdog Enhancement

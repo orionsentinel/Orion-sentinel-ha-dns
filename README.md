@@ -1,6 +1,11 @@
-# RPi HA DNS Stack 🌐
+# Orion Sentinel DNS HA 🌐
+## RPi HA DNS Stack - Privacy & High Availability
 
-A high-availability DNS stack running on Raspberry Pi 5.
+A production-ready, high-availability DNS stack for Raspberry Pi, part of the **Orion Sentinel** ecosystem.
+
+> **Orion Sentinel** is a two-Pi home lab security platform:
+> - **Orion Sentinel DNS HA** (this repo) - DNS privacy and high availability layer
+> - **Orion Sentinel NSM AI** (separate repo) - Network security monitoring with AI detection
 
 ## 📚 Documentation Quick Links
 
@@ -14,6 +19,49 @@ A high-availability DNS stack running on Raspberry Pi 5.
 - **[🚨 DISASTER_RECOVERY.md](DISASTER_RECOVERY.md)** - Recovery procedures ⭐ NEW
 - **[📝 CHANGELOG.md](CHANGELOG.md)** - Track all changes ⭐ NEW
 - **[👤 USER_GUIDE.md](USER_GUIDE.md)** - How to use and maintain the stack
+
+### 🔗 Orion Sentinel Integration
+- **[🛡️ NSM/AI Integration Guide](docs/ORION_SENTINEL_INTEGRATION.md)** - Connect with Network Security Monitoring & AI ⭐ NEW
+- **[🏗️ Orion Sentinel Architecture](docs/ORION_SENTINEL_ARCHITECTURE.md)** - Complete two-Pi ecosystem overview ⭐ NEW
+
+---
+
+## 🛡️ Orion Sentinel Ecosystem
+
+This repository is the **DNS & Privacy layer** of the Orion Sentinel platform:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  Orion Sentinel                         │
+│          Home Lab Security Platform                     │
+└─────────────────────────────────────────────────────────┘
+
+     Pi #1 (DNS Pi)              Pi #2 (Security Pi)
+┌──────────────────────┐    ┌──────────────────────────┐
+│ Orion Sentinel       │    │ Orion Sentinel NSM AI    │
+│ DNS HA (THIS REPO)   │◄──►│ (Separate Repository)    │
+│                      │    │                          │
+│ • Pi-hole            │    │ • Suricata IDS           │
+│ • Unbound            │    │ • Loki + Grafana         │
+│ • Keepalived VIP     │    │ • AI Anomaly Detection   │
+│ • DNS Logs ────────►│    │ • Domain Risk Scoring    │
+│ • Pi-hole API ◄──────│────│ • Automated Blocking     │
+└──────────────────────┘    └──────────────────────────┘
+```
+
+**What this repo provides:**
+- 🔒 **Privacy**: Network-wide ad/tracker blocking via Pi-hole
+- 🌐 **DNS**: DNSSEC-validated recursive resolution via Unbound
+- ⚡ **High Availability**: Automatic failover with Keepalived VIP
+- 📊 **Observability**: Built-in monitoring and dashboards
+- 🔄 **Smart Upgrades**: Automated update management (v2.4.0)
+
+**Integration with NSM/AI Pi:**
+- Exposes DNS logs for security analysis
+- Provides Pi-hole API for blocking risky domains
+- Shared observability stack (optional)
+
+See [docs/ORION_SENTINEL_INTEGRATION.md](docs/ORION_SENTINEL_INTEGRATION.md) for integration details.
 
 ---
 
@@ -312,18 +360,61 @@ bash scripts/setup.sh
    ```
 
 ## Updating the Stack 🔄
-To update your installation when the repository is updated:
+
+### 🆕 Smart Upgrade System (Recommended) ✨
+
+**NEW in v2.4.0:** Intelligent upgrade management with safety checks and rollback capability!
+
+```bash
+cd rpi-ha-dns-stack
+
+# Interactive mode (easiest)
+bash scripts/smart-upgrade.sh -i
+
+# Or check for updates first
+bash scripts/smart-upgrade.sh -c
+
+# Or perform full upgrade
+bash scripts/smart-upgrade.sh -u
+```
+
+**Smart Upgrade Features:**
+- ✅ Pre-upgrade health checks (disk, Docker, network)
+- ✅ Automatic backup creation before upgrade
+- ✅ Selective upgrades (all stacks or individual)
+- ✅ Post-upgrade verification (health, DNS tests)
+- ✅ Detailed upgrade logging
+- ✅ One-click rollback capability
+- ✅ Update report generation
+
+### Standard Update Method
+
+For traditional updates:
 ```bash
 cd rpi-ha-dns-stack
 bash scripts/update.sh
 ```
 
-The update script will:
+The standard update script will:
 - Backup your current configuration
 - Pull latest changes from git
 - Rebuild updated containers
 - Restart services with zero downtime
 - Preserve your `.env` and override files
+
+### Automated Update Checks
+
+Enable daily update checks to stay informed:
+```bash
+# Check for available updates
+bash scripts/check-updates.sh
+
+# View update report
+cat update-report.md
+
+# Setup automated daily checks (optional)
+(crontab -l 2>/dev/null; echo "0 3 * * * $(pwd)/scripts/check-updates.sh") | crontab -
+```
 
 ## Service Access URLs 🌐
 - **🆕 Web Setup UI:** [http://192.168.8.250:5555](http://192.168.8.250:5555) - Installation & Configuration Interface
