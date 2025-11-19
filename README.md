@@ -4,9 +4,15 @@ A high-availability DNS stack running on Raspberry Pi 5.
 
 ## 📚 Documentation Quick Links
 
+### Getting Started
 - **[🚀 QUICKSTART.md](QUICKSTART.md)** - One-page guide to get started fast
 - **[📖 INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md)** - Detailed installation instructions
-- **[🔧 TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Fix common issues (SSH disconnects, reboots, errors)
+
+### Operations & Maintenance
+- **[📋 OPERATIONAL_RUNBOOK.md](OPERATIONAL_RUNBOOK.md)** - Day-to-day operations guide ⭐ NEW
+- **[🔧 TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Fix common issues
+- **[🚨 DISASTER_RECOVERY.md](DISASTER_RECOVERY.md)** - Recovery procedures ⭐ NEW
+- **[📝 CHANGELOG.md](CHANGELOG.md)** - Track all changes ⭐ NEW
 - **[👤 USER_GUIDE.md](USER_GUIDE.md)** - How to use and maintain the stack
 
 ---
@@ -111,6 +117,66 @@ This repository provides **three complete deployment configurations**:
 - Automated sync of DNS records with Gravity Sync.
 - Self-healing through AI-Watchdog.
 - **🆕 Multi-node deployment for true hardware redundancy.**
+
+## 🔧 Operational Excellence
+
+**Automation & Monitoring Scripts** ⭐ NEW
+
+We provide production-ready scripts for operational maturity:
+
+### Health Monitoring
+```bash
+# Run weekly health checks
+bash scripts/health-check.sh
+```
+**Checks**: DNS resolution, service health, HA status, disk/memory usage, container health
+
+### Weekly Maintenance
+```bash
+# Automated maintenance tasks
+bash scripts/weekly-maintenance.sh
+```
+**Performs**: Container updates, log cleanup, disk space management, configuration backups, health reports
+
+### Setup Automation
+
+**Automatic Setup (Recommended)** ⭐
+```bash
+# Cron jobs are automatically configured during installation
+# The setup script will prompt you to enable automated tasks
+```
+
+**Manual Setup**
+```bash
+# Run the cron setup script
+sudo bash scripts/setup-cron.sh
+
+# This automatically configures:
+# - Weekly health check (Sundays at 2 AM)
+# - Weekly maintenance (Sundays at 3 AM)
+# - Log rotation
+# - Creates /var/log/rpi-dns/ directory
+```
+
+**Alternative: Manual crontab editing**
+```bash
+# Add to crontab for automation
+sudo crontab -e
+
+# Weekly health check (Sundays at 2 AM)
+0 2 * * 0 /opt/rpi-ha-dns-stack/scripts/health-check.sh >> /var/log/rpi-dns/health-check.log 2>&1
+
+# Weekly maintenance (Sundays at 3 AM)
+0 3 * * 0 /opt/rpi-ha-dns-stack/scripts/weekly-maintenance.sh >> /var/log/rpi-dns/maintenance.log 2>&1
+```
+
+### Documentation
+- **[OPERATIONAL_RUNBOOK.md](OPERATIONAL_RUNBOOK.md)** - Common issues and solutions
+- **[DISASTER_RECOVERY.md](DISASTER_RECOVERY.md)** - Recovery procedures and RTO/RPO
+- **[CHANGELOG.md](CHANGELOG.md)** - Track all configuration changes
+
+**Philosophy**: Mature systems are boring. They just work. Focus on reliability over features.
+
 
 ## Quick Start Instructions 🚀
 

@@ -364,12 +364,50 @@ main() {
     # Ask if user wants to deploy now
     prompt_deployment
     
+    # Setup automated cron jobs
+    setup_cron_jobs
+    
     echo
     log "Setup complete! 🎉"
     echo
     info "For manual deployment, run: bash scripts/install.sh"
     info "For testing notifications: curl -X POST http://$HOST_IP:8080/test -H 'Content-Type: application/json' -d '{\"message\":\"Test\"}'"
     echo
+}
+
+setup_cron_jobs() {
+    echo
+    echo -e "${BLUE}════════════════════════════════════════${NC}"
+    echo -e "${BLUE}   Automated Maintenance Setup${NC}"
+    echo -e "${BLUE}════════════════════════════════════════${NC}"
+    echo
+    
+    info "Setting up automated health checks and maintenance..."
+    echo
+    echo "This will configure weekly automated tasks:"
+    echo "  • Health checks (Sundays at 2 AM)"
+    echo "  • System maintenance (Sundays at 3 AM)"
+    echo
+    
+    read -r -p "Set up automated cron jobs? (Y/n): " setup_cron
+    setup_cron=${setup_cron:-Y}
+    
+    if [[ "$setup_cron" =~ ^[Yy]$ ]]; then
+        if [[ -f "$REPO_ROOT/scripts/setup-cron.sh" ]]; then
+            log "Running cron setup..."
+            if bash "$REPO_ROOT/scripts/setup-cron.sh"; then
+                log "✅ Automated maintenance configured successfully!"
+            else
+                warn "Cron setup encountered issues. You can run it manually later:"
+                warn "  sudo bash scripts/setup-cron.sh"
+            fi
+        else
+            warn "Cron setup script not found. Skipping..."
+        fi
+    else
+        info "Skipped automated setup. You can configure it later with:"
+        info "  sudo bash scripts/setup-cron.sh"
+    fi
 }
 
 main "$@"
