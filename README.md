@@ -139,15 +139,35 @@ bash scripts/weekly-maintenance.sh
 **Performs**: Container updates, log cleanup, disk space management, configuration backups, health reports
 
 ### Setup Automation
+
+**Automatic Setup (Recommended)** ⭐
+```bash
+# Cron jobs are automatically configured during installation
+# The setup script will prompt you to enable automated tasks
+```
+
+**Manual Setup**
+```bash
+# Run the cron setup script
+sudo bash scripts/setup-cron.sh
+
+# This automatically configures:
+# - Weekly health check (Sundays at 2 AM)
+# - Weekly maintenance (Sundays at 3 AM)
+# - Log rotation
+# - Creates /var/log/rpi-dns/ directory
+```
+
+**Alternative: Manual crontab editing**
 ```bash
 # Add to crontab for automation
 sudo crontab -e
 
 # Weekly health check (Sundays at 2 AM)
-0 2 * * 0 /opt/rpi-ha-dns-stack/scripts/health-check.sh >> /var/log/rpi-dns-health-check.log 2>&1
+0 2 * * 0 /opt/rpi-ha-dns-stack/scripts/health-check.sh >> /var/log/rpi-dns/health-check.log 2>&1
 
 # Weekly maintenance (Sundays at 3 AM)
-0 3 * * 0 /opt/rpi-ha-dns-stack/scripts/weekly-maintenance.sh >> /var/log/rpi-dns-maintenance.log 2>&1
+0 3 * * 0 /opt/rpi-ha-dns-stack/scripts/weekly-maintenance.sh >> /var/log/rpi-dns/maintenance.log 2>&1
 ```
 
 ### Documentation
