@@ -1,0 +1,120 @@
+# Alert Rules for DNS HA Stack
+
+groups:
+  - name: dns_alerts
+    interval: 30s
+    rules:
+      # Pi-hole Down
+      - alert: PiHoleDown
+        expr: up{job=~"pihole.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: pihole
+        annotations:
+          summary: "Pi-hole instance {{ $labels.instance }} is down"
+          description: "Pi-hole {{ $labels.instance }} has been down for more than 2 minutes."
+
+      # Unbound Down
+      - alert: UnboundDown
+        expr: up{job=~"unbound.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: unbound
+        annotations:
+          summary: "Unbound instance {{ $labels.instance }} is down"
+          description: "Unbound {{ $labels.instance }} has been down for more than 2 minutes."
+
+      # High DNS Query Failure Rate
+      - alert: HighDNSFailureRate
+        expr: rate(pihole_queries_forwarded{status="failed"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: dns
+        annotations:
+          summary: "High DNS query failure rate on {{ $labels.instance }}"
+          description: "DNS query failure rate is {{ $value }} queries/sec on {{ $labels.instance }}."
+
+      # High DNS Latency
+      - alert: HighDNSLatency
+        expr: probe_dns_lookup_time_seconds > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: dns
+        annotations:
+          summary: "High DNS latency on {{ $labels.instance }}"
+          description: "DNS lookup time is {{ $value }}s on {{ $labels.instance }}."
+
+  - name: system_alerts
+    interval: 60s
+    rules:
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 85% on {{ $labels.instance }}."
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 90% on {{ $labels.instance }}."
+
+      # Low Disk Space
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk space is below 15% on {{ $labels.instance }}."
+
+  - name: ha_alerts
+    interval: 30s
+    rules:
+      # VIP Failover
+      - alert: VIPFailover
+        expr: changes(up{job="keepalived"}[5m]) > 0
+        labels:
+          severity: info
+          component: ha
+        annotations:
+          summary: "Keepalived VIP failover detected"
+          description: "VIP has failed over in the last 5 minutes."
+
+      # Both Pi-hole instances down
+      - alert: AllPiHolesDown
+        expr: count(up{job=~"pihole.*"} == 0) == count(up{job=~"pihole.*"})
+        for: 1m
+        labels:
+          severity: critical
+          component: ha
+        annotations:
+          summary: "All Pi-hole instances are down"
+          description: "DNS blocking is completely unavailable!"
+
+      # Both Unbound instances down
+      - alert: AllUnboundDown
+        expr: count(up{job=~"unbound.*"} == 0) == count(up{job=~"unbound.*"})
+        for: 1m
+        labels:
+          severity: critical
+          component: ha
+        annotations:
+          summary: "All Unbound instances are down"
+          description: "DNS resolution is completely unavailable!"

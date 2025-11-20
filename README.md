@@ -20,6 +20,12 @@ A production-ready, high-availability DNS stack for Raspberry Pi, part of the **
 - **[📝 CHANGELOG.md](CHANGELOG.md)** - Track all changes ⭐ NEW
 - **[👤 USER_GUIDE.md](USER_GUIDE.md)** - How to use and maintain the stack
 
+### Phase 2 Features (Production Enhancements) ⭐ NEW
+- **[🏥 Health & HA Guide](docs/health-and-ha.md)** - Health checking and failover
+- **[🛡️ Security Profiles](docs/profiles.md)** - DNS filtering configurations
+- **[💾 Backup & Migration](docs/backup-and-migration.md)** - Disaster recovery
+- **[📊 Observability Guide](docs/observability.md)** - Monitoring and metrics
+
 ### 🔗 Orion Sentinel Integration
 - **[🛡️ NSM/AI Integration Guide](docs/ORION_SENTINEL_INTEGRATION.md)** - Connect with Network Security Monitoring & AI ⭐ NEW
 - **[🏗️ Orion Sentinel Architecture](docs/ORION_SENTINEL_ARCHITECTURE.md)** - Complete two-Pi ecosystem overview ⭐ NEW
@@ -55,6 +61,9 @@ This repository is the **DNS & Privacy layer** of the Orion Sentinel platform:
 - ⚡ **High Availability**: Automatic failover with Keepalived VIP
 - 📊 **Observability**: Built-in monitoring and dashboards
 - 🔄 **Smart Upgrades**: Automated update management (v2.4.0)
+- 🏥 **Health Checking**: Comprehensive service health validation ⭐ NEW
+- 🛡️ **Security Profiles**: Pre-configured DNS filtering levels ⭐ NEW
+- 💾 **Backup & Restore**: Automated configuration backups ⭐ NEW
 
 **Integration with NSM/AI Pi:**
 - Exposes DNS logs for security analysis
@@ -62,6 +71,117 @@ This repository is the **DNS & Privacy layer** of the Orion Sentinel platform:
 - Shared observability stack (optional)
 
 See [docs/ORION_SENTINEL_INTEGRATION.md](docs/ORION_SENTINEL_INTEGRATION.md) for integration details.
+
+---
+
+## 🆕 Phase 2 Features - Production-Ready Enhancements
+
+### 🏥 Advanced Health Checking
+
+Comprehensive health monitoring ensures system reliability:
+
+- **Automated Health Checks**: Python-based health checker validates all DNS services
+- **Docker Integration**: Built-in healthcheck directives for container monitoring
+- **HTTP Endpoints**: Optional REST API for external monitoring (`/health`, `/ready`, `/live`)
+- **Keepalived Integration**: Health status influences HA failover decisions
+
+```bash
+# Run health check
+python3 health/health_checker.py
+
+# Get JSON status
+python3 health/health_checker.py --format json
+```
+
+📖 **[Health & HA Guide](docs/health-and-ha.md)** - Complete health checking documentation
+
+### 🛡️ DNS Security Profiles
+
+Three pre-configured security levels for different needs:
+
+| Profile | Description | Use Case |
+|---------|-------------|----------|
+| **Standard** | Balanced ad + malware blocking | General home/office use |
+| **Family** | Adds adult content filtering | Families with children |
+| **Paranoid** | Maximum privacy + tracking blockers | Privacy-focused users |
+
+```bash
+# Apply a security profile
+python3 scripts/apply-profile.py --profile standard
+
+# Dry-run to preview changes
+python3 scripts/apply-profile.py --profile family --dry-run
+```
+
+📖 **[Security Profiles Guide](docs/profiles.md)** - Profile details and customization
+
+### 💾 Backup & Disaster Recovery
+
+Automated configuration backups for peace of mind:
+
+- **Automated Backups**: Script backs up all configs, Pi-hole data, and settings
+- **Checksum Verification**: SHA256 checksums ensure backup integrity
+- **Selective Restoration**: Restore everything or specific components
+- **Migration Support**: Easy migration to new hardware or SD cards
+
+```bash
+# Create backup
+bash scripts/backup-config.sh
+
+# Restore from backup
+bash scripts/restore-config.sh backups/dns-ha-backup-*.tar.gz
+
+# Schedule weekly backups
+0 2 * * 0 /opt/rpi-ha-dns-stack/scripts/backup-config.sh
+```
+
+📖 **[Backup & Migration Guide](docs/backup-and-migration.md)** - Complete backup documentation
+
+### 📊 Enhanced Observability
+
+Production-grade monitoring and metrics:
+
+- **Metrics Exporters**: Node, Pi-hole, Unbound, Blackbox, cAdvisor
+- **Prometheus Integration**: Time-series metrics with 30-day retention
+- **Grafana Dashboards**: Pre-built DNS HA Overview dashboard
+- **Alert Rules**: Critical alerts for service failures and performance issues
+- **DNS Latency Monitoring**: Track DNS resolution performance
+
+**Key Metrics:**
+- DNS query rates and latency
+- Pi-hole blocking effectiveness
+- System resource usage
+- HA failover events
+- Container health status
+
+```bash
+# Deploy monitoring exporters
+docker compose -f stacks/monitoring/docker-compose.exporters.yml up -d
+
+# Access dashboards
+# Prometheus: http://192.168.8.250:9090
+# Grafana: http://192.168.8.250:3000
+```
+
+📖 **[Observability Guide](docs/observability.md)** - Monitoring setup and metrics
+
+### 🔗 NSM/AI Integration
+
+Enhanced integration with Orion Sentinel Security Pi:
+
+- **Log Shipping**: Promtail agent for forwarding DNS logs to Loki
+- **Pi-hole API**: Documented endpoints for automated threat blocking
+- **Metrics Federation**: Share DNS metrics with Security Pi Prometheus
+- **Unified Dashboards**: Combined DNS + security visualization
+
+```bash
+# Deploy log shipping agent
+docker compose -f stacks/agents/dns-log-agent/docker-compose.yml up -d
+
+# Logs sent to Security Pi's Loki at http://192.168.8.100:3100
+```
+
+📖 **[NSM/AI Integration](docs/ORION_SENTINEL_INTEGRATION.md)** - Security Pi integration details
 
 ---
 

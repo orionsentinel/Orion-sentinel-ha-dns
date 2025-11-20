@@ -1,0 +1,16 @@
+# Grafana Dashboard Provisioning
+# This automatically loads dashboards from the dashboards/ directory
+
+apiVersion: 1
+
+providers:
+  - name: 'DNS HA Dashboards'
+    orgId: 1
+    folder: 'Orion Sentinel DNS HA'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: true

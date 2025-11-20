@@ -1,0 +1,57 @@
+# DNS Log Agent - Example Configuration
+# Ships Pi-hole and Unbound logs to Loki on the Security Pi (orion-sentinel-nsm-ai)
+
+version: '3.8'
+
+services:
+  # Promtail - Log shipping agent
+  promtail:
+    image: grafana/promtail:latest
+    container_name: dns-log-agent
+    restart: unless-stopped
+    command:
+      - '-config.file=/etc/promtail/promtail.yml'
+    volumes:
+      - ./promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/log:/var/log:ro
+      # Mount Pi-hole log directories (adjust paths as needed)
+      - pihole-primary-logs:/var/log/pihole/primary:ro
+      - pihole-secondary-logs:/var/log/pihole/secondary:ro
+      # Mount Unbound log directories (if using file logging)
+      - unbound-primary-logs:/var/log/unbound/primary:ro
+      - unbound-secondary-logs:/var/log/unbound/secondary:ro
+    environment:
+      - LOKI_URL=${LOKI_URL:-http://192.168.8.100:3100}  # Security Pi Loki endpoint
+    networks:
+      - dns_net
+
+  # Alternative: Fluentd for more complex log processing
+  # Uncomment if you need log parsing, filtering, or enrichment
+  #
+  # fluentd:
+  #   image: fluent/fluentd:latest
+  #   container_name: dns-log-processor
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./fluentd.conf:/fluentd/etc/fluent.conf:ro
+  #     - pihole-primary-logs:/var/log/pihole/primary:ro
+  #     - pihole-secondary-logs:/var/log/pihole/secondary:ro
+  #   environment:
+  #     - LOKI_URL=${LOKI_URL:-http://192.168.8.100:3100}
+  #   networks:
+  #     - dns_net
+
+volumes:
+  # These volumes should match the volumes used by Pi-hole and Unbound containers
+  pihole-primary-logs:
+    external: true
+  pihole-secondary-logs:
+    external: true
+  unbound-primary-logs:
+    external: true
+  unbound-secondary-logs:
+    external: true
+
+networks:
+  dns_net:
+    external: true
