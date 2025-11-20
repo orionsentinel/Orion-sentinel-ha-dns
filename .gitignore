@@ -27,3 +27,7 @@ stacks/observability/signal-cli-config/*
 !stacks/observability/signal-cli-config/README.md
 *.log
 *-report.md
+
+# Backups directory (created by backup-config.sh)
+backups/
+!backups/.gitkeep
