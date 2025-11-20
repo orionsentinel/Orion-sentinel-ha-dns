@@ -19,6 +19,8 @@ A production-ready, high-availability DNS stack for Raspberry Pi, part of the **
 - **[🚨 DISASTER_RECOVERY.md](DISASTER_RECOVERY.md)** - Recovery procedures ⭐ NEW
 - **[📝 CHANGELOG.md](CHANGELOG.md)** - Track all changes ⭐ NEW
 - **[👤 USER_GUIDE.md](USER_GUIDE.md)** - How to use and maintain the stack
+- **[⚙️ Operations Guide](docs/operations.md)** - Backup, restore, and upgrade procedures ⭐ NEW
+- **[🔒 Hardening Guide](docs/hardening.md)** - Security best practices and deployment hardening ⭐ NEW
 
 ### Phase 2 Features (Production Enhancements) ⭐ NEW
 - **[🏥 Health & HA Guide](docs/health-and-ha.md)** - Health checking and failover

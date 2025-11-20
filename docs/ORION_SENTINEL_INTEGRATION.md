@@ -664,6 +664,330 @@ You have successfully integrated Orion Sentinel DNS HA with NSM/AI:
 
 ---
 
+## Security Considerations
+
+**Critical Security Guidance for Orion Sentinel Integration**
+
+When integrating DNS Pi (#1) with Security Pi (#2), security is paramount. Follow these guidelines to maintain a secure architecture.
+
+### Threat Model & Risk Assessment
+
+**Key Security Risks:**
+
+1. **Pi-hole API Token Compromise**
+   - **Risk:** If an attacker obtains the API token, they can manipulate DNS blocklists
+   - **Impact:** Could whitelist malicious domains or block legitimate ones
+   - **Likelihood:** Medium (if token is exposed in logs, scripts, or unsecured storage)
+
+2. **Log Data Exposure**
+   - **Risk:** DNS query logs contain information about network activity
+   - **Impact:** Reveals which services and websites are being accessed
+   - **Likelihood:** Low to Medium (depends on log transmission and storage security)
+
+3. **Unauthorized API Access**
+   - **Risk:** Unprotected Pi-hole API accessible from untrusted networks
+   - **Impact:** External manipulation of DNS configuration
+   - **Likelihood:** Medium (if firewall rules are misconfigured)
+
+### Mitigation Strategies
+
+#### 1. Secure API Token Storage
+
+**Store API Token in .env File:**
+
+```bash
+# On DNS Pi (Pi #1)
+cd /path/to/Orion-sentinel-ha-dns
+
+# Add to .env file
+echo "PIHOLE_API_TOKEN=<your-api-token-here>" >> .env
+
+# Set restrictive permissions (CRITICAL)
+chmod 600 .env
+chown $USER:$USER .env
+```
+
+**Verify Permissions:**
+```bash
+ls -la .env
+# Should show: -rw------- (600) - only owner can read/write
+```
+
+**Never Commit .env to Git:**
+```bash
+# Ensure .env is in .gitignore
+grep "^\.env$" .gitignore || echo ".env" >> .gitignore
+
+# Verify .env is not tracked
+git status .env
+# Should show: "Untracked" or not listed
+```
+
+**Rotate API Token Regularly:**
+```bash
+# Generate new token every 90 days or after suspected compromise
+# 1. Access Pi-hole web UI: http://192.168.8.251/admin
+# 2. Go to: Settings → API
+# 3. Click: "Show API Token" → "Generate New Token"
+# 4. Update .env file with new token
+# 5. Restart services that use the token
+```
+
+#### 2. Restrict API Access
+
+**Only Security Pi Should Access API:**
+
+Configure firewall on DNS Pi to restrict API access:
+
+```bash
+# On DNS Pi (Pi #1)
+# Allow Pi-hole API only from Security Pi
+sudo ufw allow from 192.168.8.100 to any port 80 comment "Pi-hole API from Security Pi"
+
+# Block API access from all other IPs
+sudo ufw deny 80/tcp
+
+# Verify rules
+sudo ufw status numbered
+```
+
+**Alternative: Use iptables:**
+```bash
+# Allow API access only from Security Pi
+sudo iptables -A INPUT -p tcp --dport 80 -s 192.168.8.100 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 80 -j DROP
+
+# Save rules
+sudo netfilter-persistent save
+```
+
+**Monitor API Access:**
+```bash
+# Check Pi-hole API access logs
+docker exec pihole_primary tail -f /var/log/lighttpd/access.log | grep "api.php"
+
+# Look for unexpected source IPs
+```
+
+#### 3. Secure Log Transmission
+
+**Logs Shipped to Security Pi Should Not Contain:**
+
+❌ **Avoid Logging Sensitive Information:**
+- Passwords or authentication tokens
+- Personal identifiable information (PII)
+- Private/internal DNS names (if highly sensitive)
+- Full query strings with parameters
+
+✅ **Safe to Log:**
+- Domain names queried
+- Query timestamp
+- Client IP (internal only)
+- Query type (A, AAAA, PTR, etc.)
+- Block/allow action
+- Response time
+
+**Sanitize Logs Before Shipping (If Needed):**
+
+```bash
+# Example: Filter out sensitive domains before shipping
+# In Promtail configuration (stacks/agents/dns-log-agent/)
+
+pipeline_stages:
+  - match:
+      selector: '{job="pihole"}'
+      stages:
+        - regex:
+            expression: '.*(?P<domain>sensitive-internal\.local).*'
+        - drop:
+            expression: '.*sensitive-internal\.local.*'
+            drop_counter_reason: 'sensitive_domain'
+```
+
+**Encrypt Log Transmission:**
+
+Use TLS/HTTPS for Loki communication:
+
+```bash
+# On Security Pi (Pi #2)
+# Configure Loki with TLS
+# See Loki docs: https://grafana.com/docs/loki/latest/configuration/
+
+# Update Promtail on DNS Pi to use HTTPS
+# In dns-log-agent/promtail-config.yml
+clients:
+  - url: https://192.168.8.100:3100/loki/api/v1/push
+    tls_config:
+      ca_file: /path/to/ca.crt
+      cert_file: /path/to/client.crt
+      key_file: /path/to/client.key
+```
+
+#### 4. Network Segmentation
+
+**Isolate Integration Traffic:**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              Secure Network Architecture                 │
+└─────────────────────────────────────────────────────────┘
+
+[DNS Pi #1]                       [Security Pi #2]
+192.168.8.250                     192.168.8.100
+     │                                  │
+     ├─ Pi-hole API (Port 80) ─────────┤ (Allowed)
+     │                                  │
+     ├─ Promtail ──► Loki (Port 3100)──┤ (Allowed)
+     │                                  │
+     └─ Management SSH (Port 22) ──────┘ (Allowed from Admin)
+     
+[Internet] ◄──X──► [DNS Pi #1]  (BLOCKED)
+            ◄──X──► [Security Pi #2] (BLOCKED)
+```
+
+**Firewall Rules Summary:**
+
+```bash
+# On DNS Pi (Pi #1)
+# Allow only Security Pi to access Pi-hole API
+sudo ufw allow from 192.168.8.100 to any port 80
+
+# Allow SSH only from admin workstation
+sudo ufw allow from 192.168.8.10 to any port 22
+
+# Deny all other inbound
+sudo ufw default deny incoming
+sudo ufw enable
+
+# On Security Pi (Pi #2)
+# Allow Promtail from DNS Pi
+sudo ufw allow from 192.168.8.250 to any port 3100
+
+# Allow SSH only from admin workstation
+sudo ufw allow from 192.168.8.10 to any port 22
+
+# Deny all other inbound
+sudo ufw default deny incoming
+sudo ufw enable
+```
+
+#### 5. Least Privilege Access
+
+**Only Security Pi Should Have API Token:**
+
+- **DNS Pi:** Should NOT have its own API token exposed
+- **Security Pi:** Stores API token securely for automated blocking
+- **Admin Users:** Should NOT need API token for normal operations
+- **Other Services:** Should NOT have API access
+
+**Access Control Matrix:**
+
+| Component | Pi-hole Admin UI | Pi-hole API | Loki | Grafana |
+|-----------|-----------------|-------------|------|---------|
+| Admin (Human) | ✅ Read/Write | ❌ No Access | ✅ Read | ✅ Read/Write |
+| Security Pi AI | ❌ No Access | ✅ Block Domains | ✅ Write Logs | ✅ Read |
+| DNS Pi | ✅ Local Only | ❌ No Access | ✅ Send Logs | ❌ No Access |
+| Other Devices | ❌ No Access | ❌ No Access | ❌ No Access | ❌ No Access |
+
+#### 6. Audit and Monitoring
+
+**Monitor for Suspicious Activity:**
+
+```bash
+# On DNS Pi: Monitor API access
+docker exec pihole_primary tail -f /var/log/lighttpd/access.log | grep "api.php"
+
+# Look for:
+# - Unexpected source IPs
+# - High request rates (potential abuse)
+# - Failed authentication attempts
+```
+
+**Set Up Alerts:**
+
+```yaml
+# In Prometheus AlertManager
+groups:
+  - name: security
+    rules:
+      - alert: UnauthorizedAPIAccess
+        expr: rate(pihole_api_requests{source_ip!="192.168.8.100"}[5m]) > 0
+        annotations:
+          summary: "Unauthorized Pi-hole API access detected"
+          description: "API requests from {{ $labels.source_ip }}"
+```
+
+**Log Retention:**
+
+- Keep security logs for at least 90 days
+- Archive critical logs for 1 year
+- Implement log rotation to prevent disk fill
+
+#### 7. Incident Response
+
+**If API Token is Compromised:**
+
+1. **Immediately Rotate Token:**
+   ```bash
+   # Generate new token in Pi-hole UI
+   # Update .env on Security Pi
+   # Restart AI service
+   ```
+
+2. **Review Recent API Activity:**
+   ```bash
+   # Check what domains were blocked/unblocked
+   docker exec pihole_primary sqlite3 /etc/pihole/gravity.db \
+     "SELECT * FROM domainlist ORDER BY date_modified DESC LIMIT 100;"
+   ```
+
+3. **Audit Blocklist Changes:**
+   ```bash
+   # Compare current blocklist with backup
+   # Look for suspicious additions/removals
+   ```
+
+4. **Notify Stakeholders:**
+   - Document the incident
+   - Review how token was compromised
+   - Implement additional controls
+
+### Best Practices Summary
+
+**Configuration Security:**
+- ✅ Store API token in `.env` with 600 permissions
+- ✅ Never commit `.env` to version control
+- ✅ Use `.gitignore` to exclude sensitive files
+- ✅ Rotate API token every 90 days
+
+**Network Security:**
+- ✅ Restrict API access to Security Pi only
+- ✅ Use firewall rules to enforce access control
+- ✅ Consider TLS/HTTPS for log transmission
+- ✅ Monitor network traffic for anomalies
+
+**Operational Security:**
+- ✅ Principle of least privilege
+- ✅ Regular security audits
+- ✅ Monitor API access logs
+- ✅ Set up alerts for suspicious activity
+- ✅ Maintain incident response procedures
+
+**Data Security:**
+- ✅ Sanitize logs before shipping (if needed)
+- ✅ Ensure logs don't contain PII or secrets
+- ✅ Implement log retention policies
+- ✅ Secure log storage on Security Pi
+
+### Additional Resources
+
+- **Hardening Guide:** [docs/hardening.md](hardening.md)
+- **Operations Guide:** [docs/operations.md](operations.md)
+- **Security Guide:** [SECURITY_GUIDE.md](../SECURITY_GUIDE.md)
+- **Pi-hole Security:** https://docs.pi-hole.net/main/security/
+
+---
+
 ## Resources
 
 - **This Repo:** [Orion Sentinel DNS HA](https://github.com/yorgosroussakis/rpi-ha-dns-stack)
