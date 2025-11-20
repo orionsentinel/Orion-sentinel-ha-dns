@@ -344,9 +344,11 @@ def generate_config():
             f.write("\n")
             f.write("# Keepalived\n")
             if vrrp_password:
-                f.write("# SECURITY: Generate a strong random password or set your own secure password\n")
-                f.write("# Example: openssl rand -base64 20\n")
-                f.write(f"VRRP_PASSWORD={vrrp_password}\n")
+                f.write("# SECURITY: Store the VRRP password as Argon2 hash for improved security\n")
+                f.write("# If you need the plaintext for keepalived or other services, retrieve and validate securely\n")
+                ph = PasswordHasher()
+                vrrp_hash = ph.hash(vrrp_password)
+                f.write(f"VRRP_PASSWORD_HASH={vrrp_hash}\n")
             else:
                 f.write("VRRP_PASSWORD=CHANGE_ME_REQUIRED\n")
             f.write("\n")
