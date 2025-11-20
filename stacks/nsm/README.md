@@ -1,128 +1,205 @@
-# Orion Sentinel NSM Stack
+# Orion Sentinel – NSM & AI Security (orion-sentinel-nsm-ai)
 
-**Network Security Monitoring with Suricata, Loki, Grafana, and AI-powered threat detection**
+**Passive network security monitoring and AI anomaly detection for home/lab networks**
 
----
-
-## Overview
-
-This stack provides the **Security Pi (Pi #2)** component of the Orion Sentinel platform. It includes:
-
-- **Loki** – Centralized log aggregation and storage
-- **Promtail** – Log collection and shipping
-- **Grafana** – Security dashboards and visualization
-- **Suricata** – Network intrusion detection system (IDS)
-- **AI Service** – Machine learning-based anomaly detection (placeholder)
+This repository contains the **Security & Monitoring** component of Orion Sentinel. It runs on a Raspberry Pi 5 with an AI Hat and provides passive network security monitoring, AI-powered anomaly detection, and threat intelligence correlation. Together with [orion-sentinel-dns-ha](https://github.com/yorgosroussakis/rpi-ha-dns-stack) (DNS & Privacy on Pi #1), it forms a complete two-node home defense platform.
 
 ---
 
-## Quick Start
+## Features
 
-### Prerequisites
+- **Suricata IDS** – Network intrusion detection on mirrored LAN traffic (passive monitoring, no inline routing)
+- **Loki + Promtail** – Centralized log storage and collection for all security events
+- **Grafana Dashboards** – Pre-configured visualizations for alerts, DNS queries, device behavior, and anomalies
+- **Threat Intelligence** – Automated ingestion and correlation from feeds (abuse.ch, AlienVault OTX, CISA KEV, etc.)
+- **AI Anomaly Detection** – Device behavior analysis and domain risk scoring using machine learning
+- **Pi-hole Integration** – Optional API integration to automatically add high-risk domains to DNS blocklists
+- **SOAR-lite Automation** – Lightweight security orchestration and automated response (future/ongoing)
 
-- Raspberry Pi 5 (8GB RAM recommended)
-- Docker and Docker Compose installed
-- Network port mirroring configured (for Suricata)
-- DNS Pi (Pi #1) running and accessible
+---
 
-### 1. Configuration
+## Architecture Overview
 
-Create a `.env` file:
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        Home Network                              │
+│                                                                  │
+│  ┌──────────────┐                                               │
+│  │   Router     │  NAT, Firewall, DHCP                          │
+│  │              │  DNS → Pi #1 (VIP)                            │
+│  └──────┬───────┘  Port Mirror → Pi #2 eth0                     │
+│         │                                                        │
+│    ┌────▼──────────────┐                ┌─────────────────────┐│
+│    │ Switch (Managed)  │                │                     ││
+│    │ Port Mirroring    │                │                     ││
+│    └────┬──────┬───────┘                │                     ││
+│         │      │                        │                     ││
+│         │      └───────────────┐        │                     ││
+│         │                      │        │                     ││
+│  ┌──────▼────────────┐  ┌──────▼────────▼──────────────────┐ │
+│  │  Pi #1: DNS Pi    │  │  Pi #2: Security Pi (THIS REPO) │ │
+│  │  192.168.x.251    │  │  192.168.x.100 + Mirror Port    │ │
+│  │                   │  │                                  │ │
+│  │  ┌─────────────┐  │  │  ┌──────────────────────────┐  │ │
+│  │  │ Pi-hole     │──┼──┼─▶│ Loki (Log Storage)       │  │ │
+│  │  │ (DNS+Block) │  │API │  │ - Suricata alerts       │  │ │
+│  │  └─────────────┘  │  │  │ - DNS logs (from Pi #1) │  │ │
+│  │                   │Logs │ - AI anomalies          │  │ │
+│  │  ┌─────────────┐  │──┼─▶│ - Threat intel          │  │ │
+│  │  │ Unbound     │  │  │  └────────┬─────────────────┘  │ │
+│  │  │ (Recursive) │  │  │           │                    │ │
+│  │  └─────────────┘  │  │  ┌────────▼─────────────────┐  │ │
+│  │                   │  │  │ Grafana (Dashboards)     │  │ │
+│  │  orion-sentinel-  │  │  │ - Security Overview      │  │ │
+│  │  dns-ha repo      │  │  │ - Threat Intelligence    │  │ │
+│  └───────────────────┘  │  └──────────────────────────┘  │ │
+│                         │                                  │ │
+│                         │  ┌──────────────────────────┐  │ │
+│                         │  │ Suricata IDS             │  │ │
+│                         │  │ (Passive on mirror port) │  │ │
+│                         │  └──────────┬───────────────┘  │ │
+│                         │             │                   │ │
+│                         │  ┌──────────▼───────────────┐  │ │
+│                         │  │ AI Service               │  │ │
+│                         │  │ - Device anomaly detect  │  │ │
+│                         │  │ - Domain risk scoring    │  │ │
+│                         │  │ - Auto-blocking via API  │  │ │
+│                         │  └──────────────────────────┘  │ │
+│                         │                                  │ │
+│                         │  orion-sentinel-nsm-ai repo      │ │
+│                         └──────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────┘
 
-```bash
-cp .env.example .env
+Legend:
+─────► Log/data flow
+◄───── API calls (block domains)
 ```
 
-Edit `.env` and set:
+---
+
+## Repo Layout
+
+```
+orion-sentinel-nsm-ai/
+├── docs/
+│   ├── ORION_SENTINEL_ARCHITECTURE.md    # Overall two-Pi architecture
+│   ├── ORION_SENTINEL_INTEGRATION.md     # Integration with DNS Pi
+│   ├── logging-and-dashboards.md         # Grafana dashboards guide
+│   └── ai-stack-setup.md                 # AI service setup (future)
+│
+├── stacks/
+│   ├── nsm/                              # Network Security Monitoring stack
+│   │   ├── docker-compose.yml            # Suricata, Loki, Grafana, Promtail
+│   │   ├── loki/                         # Loki configuration
+│   │   ├── promtail/                     # Log collection config
+│   │   ├── grafana-provisioning/         # Auto-loaded dashboards
+│   │   ├── suricata/                     # Suricata IDS config
+│   │   └── README.md                     # This file
+│   │
+│   └── ai/                                # AI & Threat Intel stack (future)
+│       ├── docker-compose.yml             # AI service, threat intel
+│       ├── threat-intel/                  # IOC feeds and correlation
+│       ├── ai-service/                    # ML models and scoring
+│       └── soar/                          # Automation and response
+│
+└── README.md                              # Main repository README
+```
+
+---
+
+## Quick Start (High-Level)
+
+### 1. Prepare Pi #2 (Security Pi)
+
+- **Hardware:** Raspberry Pi 5 (8GB RAM) with AI Hat
+- **OS:** Raspberry Pi OS (64-bit) or Ubuntu Server
+- **Network:** Static IP address (e.g., 192.168.8.100)
+- **Software:** Docker and Docker Compose installed
 
 ```bash
-# Grafana credentials
-GRAFANA_ADMIN_USER=admin
+# Install Docker (if not already installed)
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+
+# Install Docker Compose
+sudo apt install docker-compose-plugin
+```
+
+### 2. Configure Port Mirroring
+
+Configure your managed switch to mirror all LAN traffic to the port connected to Pi #2:
+
+- **Source ports:** All LAN ports
+- **Destination port:** Port connected to Pi #2 (e.g., port 8)
+- **Direction:** Both ingress and egress
+- **Mode:** Passive monitoring (read-only)
+
+This allows Suricata to see all network traffic without being inline.
+
+### 3. Clone Repository and Configure
+
+```bash
+# Clone this repository
+git clone https://github.com/yorgosroussakis/orion-sentinel-nsm-ai.git
+cd orion-sentinel-nsm-ai/stacks/nsm
+
+# Copy and edit environment variables
+cp .env.example .env
+nano .env  # Set NSM_IFACE, GRAFANA_ADMIN_PASSWORD, etc.
+```
+
+**Key environment variables:**
+
+```bash
+# Network interface receiving mirrored traffic
+NSM_IFACE=eth0  # Or the interface connected to your switch mirror port
+
+# Grafana admin credentials
 GRAFANA_ADMIN_PASSWORD=your-secure-password
 
-# Pi-hole API (for AI service to block domains)
+# Optional: Pi-hole API for auto-blocking (from DNS Pi)
 PIHOLE_API_URL=http://192.168.8.251/admin/api.php
-PIHOLE_API_TOKEN=your-pihole-api-token
-
-# Network interface to monitor (for Suricata)
-MONITOR_INTERFACE=eth0
-
-# Optional: Host IP for Grafana root URL
-HOST_IP=192.168.8.100
+PIHOLE_API_TOKEN=your-api-token
 ```
 
-### 2. Create Required Directories
+### 4. Start NSM Stack
 
 ```bash
-mkdir -p suricata/{etc,logs,rules}
-mkdir -p ai-service/{models,config}
-```
-
-### 3. Start the Stack
-
-```bash
+# Start Loki, Grafana, Promtail, Suricata
 docker compose up -d
-```
 
-### 4. Verify Services
-
-```bash
 # Check all services are running
 docker compose ps
 
-# Check Loki is ready
-curl http://localhost:3100/ready
-
-# Check Grafana is ready
-curl http://localhost:3000/api/health
-
 # View logs
-docker compose logs -f grafana
+docker compose logs -f
 ```
 
-### 5. Access Grafana
+### 5. Access Grafana Dashboards
 
-1. Open browser: `http://<pi-ip>:3000`
+1. Open browser: `http://<pi2-ip>:3000` (e.g., `http://192.168.8.100:3000`)
 2. Login with credentials from `.env`
 3. Navigate to **Dashboards** → **Security** folder
 4. Open **Orion Sentinel – Security Overview**
 
----
+You should see panels for Suricata alerts, DNS queries (once integrated), AI anomalies, and threat intel.
 
-## Architecture
+### 6. (Optional) Start AI Stack
 
+Once you have ML models trained and Pi-hole API configured:
+
+```bash
+cd ../ai
+docker compose up -d
 ```
-┌─────────────────────────────────────────────────────────┐
-│                  Orion Sentinel NSM Stack                │
-│                    (Security Pi #2)                      │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐             │
-│  │ Suricata │  │    AI    │  │  Threat  │             │
-│  │   IDS    │  │ Service  │  │   Intel  │             │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘             │
-│       │             │              │                    │
-│       │  ┌──────────▼──────────────▼─────┐             │
-│       └─▶│        Promtail               │             │
-│          │     (Log Collector)           │             │
-│          └──────────┬────────────────────┘             │
-│                     │                                   │
-│          ┌──────────▼────────────────────┐             │
-│          │          Loki                 │             │
-│          │     (Log Storage)             │             │
-│          └──────────┬────────────────────┘             │
-│                     │                                   │
-│          ┌──────────▼────────────────────┐             │
-│          │        Grafana                │             │
-│          │     (Dashboards)              │             │
-│          └───────────────────────────────┘             │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
-```
+
+See `docs/ai-stack-setup.md` for AI service configuration (future documentation).
 
 ---
 
-## Components
+## Components (NSM Stack)
+
+This section describes the services in `stacks/nsm/` (Network Security Monitoring stack).
 
 ### Loki (Port 3100)
 
@@ -133,47 +210,55 @@ Centralized log storage with:
 
 **Configuration:** `loki/loki-config.yaml`
 
+**Log Streams:**
+- Suricata IDS alerts and events
+- DNS queries from Pi #1 (Pi-hole, Unbound)
+- AI service output (device anomalies, domain risk)
+- Threat intelligence (IOCs, matches, digests)
+
 ### Promtail (Port 9080)
 
 Collects logs from:
-- Suricata EVE JSON logs
-- AI service output
-- Threat intelligence feeds
-- Docker containers
+- Suricata EVE JSON logs (`/var/log/suricata/eve.json`)
+- AI service output (`/var/log/ai-service/`)
+- Threat intelligence feeds (`/var/log/threat-intel/`)
+- Docker containers (optional)
 
 **Configuration:** `promtail/promtail-config.yaml`
+
+Ships all logs to Loki for storage and querying.
 
 ### Grafana (Port 3000)
 
 Pre-configured with:
-- Loki datasource
-- Security Overview dashboard
-- Threat Intelligence dashboard
+- Loki datasource (auto-provisioned)
+- Security Overview dashboard (20 panels)
+- Threat Intelligence dashboard (15 panels)
 
 **Provisioning:** `grafana-provisioning/`
 
+Dashboards auto-load on startup. See `docs/logging-and-dashboards.md` for full panel descriptions and LogQL query examples.
+
 ### Suricata (Network Mode: Host)
 
-Network IDS running in passive mode:
-- Monitors mirrored network traffic
-- Generates alerts for suspicious activity
-- Logs to EVE JSON format
+Network IDS running in **passive mode**:
+- Monitors mirrored network traffic (port mirroring required)
+- Generates alerts for suspicious activity (malware, exploits, C2, etc.)
+- Logs to EVE JSON format for easy parsing
 
 **Configuration:** `suricata/etc/` (to be created)  
-**Logs:** `suricata/logs/`
+**Logs:** `suricata/logs/eve.json`
 
-### AI Service (Placeholder)
+**Status:** Service configured, needs IDS rules and interface tuning.
+
+### AI Service (Future - stacks/ai/)
 
 Machine learning service for:
-- Device behavior anomaly detection
-- Domain risk scoring
-- Automated threat response
+- **Device behavior anomaly detection:** Identifies unusual patterns in network activity per device
+- **Domain risk scoring:** ML-based classification of queried domains as benign/suspicious/malicious
+- **Automated threat response:** Calls Pi-hole API to block high-risk domains
 
-**Note:** This is a placeholder. Implement your AI service with:
-- Python application
-- Loki query integration
-- Pi-hole API client
-- ML models for scoring
+**Status:** Placeholder service in `stacks/nsm/docker-compose.yml`. Full implementation in `stacks/ai/` directory (future work).
 
 ---
 
@@ -205,29 +290,87 @@ See `docs/logging-and-dashboards.md` for complete dashboard documentation.
 
 ---
 
-## Integration with DNS Pi
+## Working with orion-sentinel-dns-ha
 
-To ship DNS logs from Pi #1 to this NSM stack:
+This repository (orion-sentinel-nsm-ai) handles **Security & Monitoring** on Pi #2. The DNS & Privacy layer runs on Pi #1 using the [orion-sentinel-dns-ha](https://github.com/yorgosroussakis/rpi-ha-dns-stack) repository.
 
-1. **On DNS Pi (Pi #1):**
+### What Lives Where
 
-   Install Promtail to ship Pi-hole and Unbound logs.
+| Component | Repository | Pi | Purpose |
+|-----------|------------|-----|---------|
+| **DNS & Privacy** | [orion-sentinel-dns-ha](https://github.com/yorgosroussakis/rpi-ha-dns-stack) | Pi #1 | Pi-hole, Unbound, Keepalived VIP, DNS query logging |
+| **Security & Monitoring** | **orion-sentinel-nsm-ai** (this repo) | Pi #2 | Suricata IDS, Loki, Grafana, AI, Threat Intel |
 
-   See `docs/ORION_SENTINEL_INTEGRATION.md` for step-by-step instructions.
+### Integration Points
 
-2. **Configure Promtail to point to this Loki instance:**
+**1. DNS Logs → Security Pi**
 
-   ```yaml
-   clients:
-     - url: http://<pi2-ip>:3100/loki/api/v1/push
-   ```
+DNS query logs from Pi #1 (Pi-hole and Unbound) are shipped to Loki on Pi #2 via Promtail:
 
-3. **Verify logs arrive:**
+- Install Promtail on Pi #1 (see `docs/ORION_SENTINEL_INTEGRATION.md`)
+- Configure to send logs to `http://<pi2-ip>:3100/loki/api/v1/push`
+- Logs appear in Grafana dashboards under DNS Activity panels
 
-   ```bash
-   curl "http://localhost:3100/loki/api/v1/label/service/values"
-   # Should include: pihole, unbound, suricata, ...
-   ```
+**2. Pi-hole API ← Security Pi**
+
+The AI service on Pi #2 can automatically block high-risk domains by calling Pi-hole's API on Pi #1:
+
+- Get API token from Pi-hole UI: Settings → API → Show API token
+- Set `PIHOLE_API_URL` and `PIHOLE_API_TOKEN` in `.env`
+- AI service blocks domains with risk score > threshold
+
+**3. Together They Form a Two-Node Home Defense Platform**
+
+```
+┌───────────────────────────────────────────────────┐
+│          Orion Sentinel Platform                  │
+├───────────────────────────────────────────────────┤
+│                                                   │
+│  Pi #1 (DNS Pi)              Pi #2 (Security Pi) │
+│  ┌──────────────┐            ┌──────────────┐   │
+│  │ DNS Privacy  │───Logs────▶│ NSM + AI     │   │
+│  │ & Blocking   │◀───Block───│ Monitoring   │   │
+│  └──────────────┘    API     └──────────────┘   │
+│                                                   │
+│  • Ad blocking               • IDS alerts        │
+│  • Recursive DNS             • Anomaly detect    │
+│  • High availability         • Threat intel      │
+│  • Query logging             • Auto-response     │
+└───────────────────────────────────────────────────┘
+```
+
+**Benefits of Two-Node Design:**
+
+- **Separation of concerns:** DNS on Pi #1, security on Pi #2
+- **Performance:** Each Pi dedicated to its role
+- **Resilience:** DNS stays up even if security monitoring is down
+- **Scalability:** Add more security nodes or DNS nodes independently
+
+---
+
+## Status / Roadmap
+
+### ✅ Completed
+
+- **NSM Foundation:** Loki + Promtail + Grafana stack configured
+- **Dashboards:** Security Overview and Threat Intelligence dashboards with 35 panels
+- **Suricata Placeholder:** Docker service ready, needs rules and configuration
+- **Documentation:** Architecture, integration, and dashboard guides
+
+### 🚧 In Progress
+
+- **Threat Intel Module:** IOC feeds (abuse.ch, OTX, CISA KEV), correlation engine
+- **AI Anomaly Detection:** Device behavior models, domain risk scoring
+- **Suricata Configuration:** IDS rules, interface tuning, alert optimization
+
+### 📅 Future / Ongoing
+
+- **SOAR-lite Automation:** Automated response playbooks, webhook integration
+- **Advanced ML Models:** Transformer-based models for behavior analysis
+- **Real-time Packet Capture:** On-demand PCAP for investigations
+- **Multi-site Support:** VPN mesh for distributed monitoring
+
+**Note:** This is a home/lab security project. Features are implemented as needed and contributions are welcome!
 
 ---
 
@@ -471,51 +614,69 @@ loki:
 
 ---
 
-## Next Steps
+## Next Steps After Deployment
 
-1. **Configure Suricata:**
-   - Create `suricata/etc/suricata.yaml`
-   - Download IDS rules
-   - Configure interface monitoring
+Once the NSM stack is running:
 
-2. **Implement AI Service:**
-   - Create Python application
-   - Implement ML models
-   - Integrate with Loki and Pi-hole
+1. **Configure Suricata IDS:**
+   - Download and install IDS rules (e.g., Emerging Threats, Snort rules)
+   - Tune `suricata.yaml` for your network interface and traffic volume
+   - Test alert generation with EICAR or other test patterns
 
-3. **Set Up Threat Intel:**
-   - Configure threat feed sources
-   - Implement IOC ingestion
-   - Create correlation logic
+2. **Integrate DNS Pi (Pi #1):**
+   - Install Promtail on DNS Pi to ship Pi-hole and Unbound logs
+   - Configure to send to `http://<pi2-ip>:3100/loki/api/v1/push`
+   - Verify DNS query logs appear in Grafana dashboards
+   - See `docs/ORION_SENTINEL_INTEGRATION.md` for detailed steps
 
-4. **Enable Alerting:**
-   - Configure Grafana alerts
-   - Set up notification channels (email, Signal, etc.)
-   - Define alert thresholds
+3. **Implement AI Service (stacks/ai/):**
+   - Train ML models for device behavior baselines
+   - Implement domain risk scoring algorithm
+   - Configure Pi-hole API integration for auto-blocking
+   - See `docs/ai-stack-setup.md` (future documentation)
 
-5. **Integrate with DNS Pi:**
-   - Install Promtail on Pi #1
-   - Ship DNS logs to this Loki instance
-   - Verify logs in Grafana dashboards
+4. **Set Up Threat Intelligence:**
+   - Configure IOC feed sources (abuse.ch, OTX, CISA KEV, etc.)
+   - Implement correlation engine to match IOCs with your logs
+   - Add IOC and match streams to Loki
+   - Monitor via Threat Intelligence dashboard
+
+5. **Enable Alerting:**
+   - Configure Grafana alert rules (high alert rate, critical anomalies, etc.)
+   - Set up notification channels (email, Slack, Signal, etc.)
+   - Define escalation policies and on-call schedules
+
+6. **Harden and Optimize:**
+   - Review security settings and credentials
+   - Tune resource limits based on actual usage
+   - Set up automated backups for Grafana dashboards and Loki data
+   - Document your customizations
 
 ---
 
 ## Documentation
 
-- **Complete Dashboard Guide:** `docs/logging-and-dashboards.md`
-- **Orion Sentinel Architecture:** `docs/ORION_SENTINEL_ARCHITECTURE.md`
-- **Integration Guide:** `docs/ORION_SENTINEL_INTEGRATION.md`
+Full documentation is available in the `docs/` directory:
+
+- **`ORION_SENTINEL_ARCHITECTURE.md`** – Overall two-Pi architecture and data flows
+- **`ORION_SENTINEL_INTEGRATION.md`** – Integrating DNS Pi logs with Security Pi
+- **`logging-and-dashboards.md`** – Complete Grafana dashboard guide with LogQL examples
+- **`ai-stack-setup.md`** – AI service configuration (future)
 
 ---
 
-## Support
+## Support and Contributing
 
-For issues or questions:
-1. Check `docs/logging-and-dashboards.md` troubleshooting section
-2. Review Docker logs: `docker compose logs`
-3. Open an issue in the repository
+**For issues or questions:**
+1. Check the troubleshooting sections in this README and `docs/logging-and-dashboards.md`
+2. Review Docker logs: `docker compose logs <service>`
+3. Open an issue in the GitHub repository
+
+**Contributions welcome!** This is an open-source home/lab security project. If you've implemented features (AI models, threat intel feeds, SOAR playbooks, etc.), consider contributing back.
 
 ---
 
-**Status:** Ready for deployment (Loki, Grafana, Promtail configured)  
-**TODO:** Suricata configuration, AI service implementation, threat intel feeds
+**Repository:** [orion-sentinel-nsm-ai](https://github.com/yorgosroussakis/orion-sentinel-nsm-ai)  
+**Companion Repo:** [orion-sentinel-dns-ha](https://github.com/yorgosroussakis/rpi-ha-dns-stack) (DNS & Privacy on Pi #1)  
+**Status:** Foundation ready (Loki, Grafana, Promtail, Suricata placeholder)  
+**Next:** Suricata rules, AI service, threat intel feeds
