@@ -307,7 +307,8 @@ run_functional_tests() {
     fi
     
     # Test blocklist count
-    local pi holes=$(docker ps --format '{{.Names}}' | grep pihole | head -1)
+    local piholes
+    piholes=$(docker ps --format '{{.Names}}' | grep pihole | head -1)
     if [ -n "$piholes" ]; then
         local domain_count=$(docker exec "$piholes" bash -c \
             "sqlite3 /etc/pihole/gravity.db 'SELECT COUNT(*) FROM gravity;' 2>/dev/null" || echo "0")

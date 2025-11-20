@@ -4,9 +4,7 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-LOG_FILE="/var/log/rpi-dns-health-check.log"
 
 echo "=========================================="
 echo "RPi HA DNS Stack Health Check"

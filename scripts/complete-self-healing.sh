@@ -24,8 +24,6 @@ HUNG_PROCESS_TIMEOUT="${HUNG_PROCESS_TIMEOUT:-300}"  # 5 minutes
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 
 # Track restart attempts
-declare -A RESTART_COUNTS
-declare -A LAST_RESTART_TIME
 declare -A MEMORY_WARNINGS
 
 # Colors
@@ -33,7 +31,6 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
-CYAN='\033[0;36m'
 NC='\033[0m'
 
 log() { echo -e "${GREEN}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} $*"; }
@@ -98,7 +95,6 @@ check_disk_space() {
 heal_disk_space() {
     log "🔧 Auto-healing: Cleaning up disk space..."
     
-    local freed=0
     
     # Clean Docker
     log "Pruning Docker resources..."

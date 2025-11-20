@@ -5,7 +5,6 @@
 set -u
 
 # Test results tracking
-declare -A TEST_RESULTS
 TESTS_PASSED=0
 TESTS_FAILED=0
 TESTS_TOTAL=0

@@ -58,7 +58,6 @@ echo ""
 
 # Detect deployment type
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
 print_info "Detecting deployment location..."
 CURRENT_DIR=$(pwd)
