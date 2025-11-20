@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Selection - Orion Sentinel DNS HA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌐 Orion Sentinel DNS HA</h1>
+            <p class="subtitle">DNS Profile Selection</p>
+        </header>
+
+        <main>
+            <div class="progress-bar">
+                <div class="progress-step done">Network</div>
+                <div class="progress-step active">Profile</div>
+                <div class="progress-step">Done</div>
+            </div>
+
+            <div class="profile-intro">
+                <h2>Choose Your DNS Filtering Profile</h2>
+                <p>Select a pre-configured security profile for your DNS filtering needs. You can change this later.</p>
+            </div>
+
+            <form id="profileForm">
+                <div class="profile-cards">
+                    <label class="profile-card">
+                        <input type="radio" name="profile" value="standard" checked>
+                        <div class="profile-content">
+                            <div class="profile-header">
+                                <span class="profile-icon">⚖️</span>
+                                <h3>Standard</h3>
+                                <span class="badge recommended">Recommended</span>
+                            </div>
+                            <p class="profile-description">Balanced protection for general use</p>
+                            <ul class="profile-features">
+                                <li>✅ Ad blocking</li>
+                                <li>✅ Malware protection</li>
+                                <li>✅ Basic tracking protection</li>
+                                <li>❌ No content filtering</li>
+                            </ul>
+                            <p class="profile-use-case"><strong>Best for:</strong> Home users, small offices</p>
+                        </div>
+                    </label>
+
+                    <label class="profile-card">
+                        <input type="radio" name="profile" value="family">
+                        <div class="profile-content">
+                            <div class="profile-header">
+                                <span class="profile-icon">👨‍👩‍👧‍👦</span>
+                                <h3>Family</h3>
+                            </div>
+                            <p class="profile-description">Family-safe internet with content filtering</p>
+                            <ul class="profile-features">
+                                <li>✅ Everything in Standard</li>
+                                <li>✅ Adult content blocking</li>
+                                <li>✅ Gambling site blocking</li>
+                                <li>✅ Enhanced malware protection</li>
+                            </ul>
+                            <p class="profile-use-case"><strong>Best for:</strong> Families with children, schools</p>
+                        </div>
+                    </label>
+
+                    <label class="profile-card">
+                        <input type="radio" name="profile" value="paranoid">
+                        <div class="profile-content">
+                            <div class="profile-header">
+                                <span class="profile-icon">🔒</span>
+                                <h3>Paranoid</h3>
+                                <span class="badge warning">May break sites</span>
+                            </div>
+                            <p class="profile-description">Maximum privacy and security</p>
+                            <ul class="profile-features">
+                                <li>✅ Everything in Standard</li>
+                                <li>✅ Aggressive telemetry blocking</li>
+                                <li>✅ Social media tracking blockers</li>
+                                <li>✅ Smart TV ad blocking</li>
+                            </ul>
+                            <p class="profile-use-case"><strong>Best for:</strong> Privacy-conscious users</p>
+                            <div class="warning-box">
+                                ⚠️ <strong>Warning:</strong> May break some websites and services
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="info-box">
+                    <h4>💡 About Profiles</h4>
+                    <p>
+                        Profiles configure which blocklists are active in Pi-hole. You can:
+                    </p>
+                    <ul>
+                        <li>Change profiles anytime with: <code>python3 scripts/apply-profile.py --profile PROFILE_NAME</code></li>
+                        <li>Customize blocklists in the Pi-hole admin interface</li>
+                        <li>Create your own custom profiles (see docs/profiles.md)</li>
+                    </ul>
+                </div>
+
+                <div id="errorMsg" class="error-msg" style="display: none;"></div>
+                <div id="successMsg" class="success-msg" style="display: none;"></div>
+
+                <div class="button-group">
+                    <a href="/network" class="btn btn-secondary">← Back</a>
+                    <button type="submit" class="btn btn-primary">Complete Setup →</button>
+                </div>
+            </form>
+        </main>
+
+        <footer>
+            <p>Orion Sentinel DNS HA &copy; 2024</p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const errorMsg = document.getElementById('errorMsg');
+            const successMsg = document.getElementById('successMsg');
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+            
+            // Get selected profile
+            const formData = new FormData(e.target);
+            const profile = formData.get('profile');
+            
+            if (!profile) {
+                errorMsg.textContent = 'Please select a profile';
+                errorMsg.style.display = 'block';
+                return;
+            }
+            
+            // Submit
+            try {
+                const response = await fetch('/api/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ profile })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    successMsg.textContent = 'Profile saved! Redirecting...';
+                    successMsg.style.display = 'block';
+                    // Redirect to done page
+                    setTimeout(() => {
+                        window.location.href = '/done';
+                    }, 1000);
+                } else {
+                    errorMsg.textContent = result.error || 'Failed to save profile';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (error) {
+                errorMsg.textContent = 'Error: ' + error.message;
+                errorMsg.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

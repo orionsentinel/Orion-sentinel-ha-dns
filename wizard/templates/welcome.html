@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orion Sentinel DNS HA - Welcome</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌐 Orion Sentinel DNS HA</h1>
+            <p class="subtitle">First-Run Setup Wizard</p>
+        </header>
+
+        <main>
+            <div class="welcome-content">
+                <h2>Welcome to Orion Sentinel DNS HA!</h2>
+                
+                <p class="intro">
+                    This wizard will help you set up your high-availability DNS stack with:
+                </p>
+
+                <div class="features">
+                    <div class="feature">
+                        <span class="icon">🔒</span>
+                        <div>
+                            <strong>Privacy</strong>
+                            <p>Network-wide ad/tracker blocking via Pi-hole</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <span class="icon">🌐</span>
+                        <div>
+                            <strong>DNS</strong>
+                            <p>DNSSEC-validated recursive resolution via Unbound</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <span class="icon">⚡</span>
+                        <div>
+                            <strong>High Availability</strong>
+                            <p>Automatic failover with Keepalived VIP</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <span class="icon">📊</span>
+                        <div>
+                            <strong>Observability</strong>
+                            <p>Built-in monitoring with Grafana dashboards</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>What This Wizard Does</h3>
+                    <ol>
+                        <li><strong>Network Configuration</strong>: Set up IP addresses, deployment mode, and passwords</li>
+                        <li><strong>Profile Selection</strong>: Choose your DNS filtering level (Family / Standard / Paranoid)</li>
+                        <li><strong>Deployment</strong>: Generate configuration and provide deployment instructions</li>
+                    </ol>
+                </div>
+
+                <div class="button-group">
+                    <a href="/network" class="btn btn-primary btn-large">Get Started →</a>
+                </div>
+
+                <div class="advanced-link">
+                    <p>
+                        Advanced user? 
+                        <a href="https://github.com/yorgosroussakis/Orion-sentinel-ha-dns/blob/main/docs/install-single-pi.md" target="_blank">
+                            View CLI installation guide
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Orion Sentinel DNS HA &copy; 2024 | <a href="https://github.com/yorgosroussakis/Orion-sentinel-ha-dns" target="_blank">Documentation</a></p>
+        </footer>
+    </div>
+</body>
+</html>

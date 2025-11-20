@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Configuration - Orion Sentinel DNS HA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌐 Orion Sentinel DNS HA</h1>
+            <p class="subtitle">Network Configuration</p>
+        </header>
+
+        <main>
+            <div class="progress-bar">
+                <div class="progress-step active">Network</div>
+                <div class="progress-step">Profile</div>
+                <div class="progress-step">Done</div>
+            </div>
+
+            <form id="networkForm">
+                <div class="form-section">
+                    <h2>Deployment Mode</h2>
+                    <p class="help-text">Choose how you want to deploy the DNS stack.</p>
+                    
+                    <div class="radio-group">
+                        <label class="radio-card">
+                            <input type="radio" name="mode" value="single" checked>
+                            <div class="radio-content">
+                                <strong>Single-Node Mode</strong>
+                                <p>Run on one Raspberry Pi. No VIP failover, but still has dual Pi-hole containers.</p>
+                                <p class="tag">Recommended for: Home labs, testing</p>
+                            </div>
+                        </label>
+                        
+                        <label class="radio-card">
+                            <input type="radio" name="mode" value="ha">
+                            <div class="radio-content">
+                                <strong>Two-Node HA Mode</strong>
+                                <p>Run on two Raspberry Pis with automatic failover using a shared Virtual IP (VIP).</p>
+                                <p class="tag">Recommended for: Production, 24/7 availability</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Network Settings</h2>
+                    
+                    <div class="form-group">
+                        <label for="pi_ip">Pi's LAN IP Address</label>
+                        <input type="text" id="pi_ip" name="pi_ip" value="{{ default_ip }}" required>
+                        <span class="help-text">The static IP of this Raspberry Pi (detected: {{ default_ip }})</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="interface">Network Interface</label>
+                        <input type="text" id="interface" name="interface" value="{{ default_interface }}" required>
+                        <span class="help-text">Usually 'eth0' for Ethernet or 'wlan0' for WiFi (detected: {{ default_interface }})</span>
+                    </div>
+
+                    <div id="ha_settings" class="ha-settings" style="display: none;">
+                        <div class="form-group">
+                            <label for="vip">Virtual IP (VIP)</label>
+                            <input type="text" id="vip" name="vip" placeholder="e.g., 192.168.8.255">
+                            <span class="help-text">Shared IP that floats between both Pis. Must be unused on your network.</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="node_role">Node Role</label>
+                            <select id="node_role" name="node_role">
+                                <option value="MASTER">MASTER (Primary node, owns VIP by default)</option>
+                                <option value="BACKUP">BACKUP (Secondary node, takes VIP if primary fails)</option>
+                            </select>
+                            <span class="help-text">Choose MASTER for Pi #1, BACKUP for Pi #2</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Security</h2>
+                    
+                    <div class="form-group">
+                        <label for="pihole_password">Pi-hole Admin Password</label>
+                        <input type="password" id="pihole_password" name="pihole_password" required minlength="8">
+                        <span class="help-text">Strong password for Pi-hole web interface (min 8 characters)</span>
+                    </div>
+
+                    <div class="info-box info">
+                        <strong>💡 Security Tip:</strong> Generate a strong password with:
+                        <code>openssl rand -base64 32</code>
+                    </div>
+                </div>
+
+                <div id="errorMsg" class="error-msg" style="display: none;"></div>
+                <div id="successMsg" class="success-msg" style="display: none;"></div>
+
+                <div class="button-group">
+                    <a href="/" class="btn btn-secondary">← Back</a>
+                    <button type="submit" class="btn btn-primary">Next →</button>
+                </div>
+            </form>
+        </main>
+
+        <footer>
+            <p>Orion Sentinel DNS HA &copy; 2024</p>
+        </footer>
+    </div>
+
+    <script>
+        // Show/hide HA settings based on mode
+        const modeRadios = document.querySelectorAll('input[name="mode"]');
+        const haSettings = document.getElementById('ha_settings');
+        const vipInput = document.getElementById('vip');
+        
+        modeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'ha') {
+                    haSettings.style.display = 'block';
+                    vipInput.required = true;
+                } else {
+                    haSettings.style.display = 'none';
+                    vipInput.required = false;
+                }
+            });
+        });
+
+        // Form submission
+        document.getElementById('networkForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const errorMsg = document.getElementById('errorMsg');
+            const successMsg = document.getElementById('successMsg');
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+            
+            // Gather form data
+            const formData = new FormData(e.target);
+            const data = {
+                mode: formData.get('mode'),
+                pi_ip: formData.get('pi_ip'),
+                interface: formData.get('interface'),
+                pihole_password: formData.get('pihole_password')
+            };
+            
+            if (data.mode === 'ha') {
+                data.vip = formData.get('vip');
+                data.node_role = formData.get('node_role');
+            }
+            
+            // Validate
+            if (!data.pi_ip || !data.interface || !data.pihole_password) {
+                errorMsg.textContent = 'Please fill in all required fields';
+                errorMsg.style.display = 'block';
+                return;
+            }
+            
+            if (data.mode === 'ha' && !data.vip) {
+                errorMsg.textContent = 'VIP is required for HA mode';
+                errorMsg.style.display = 'block';
+                return;
+            }
+            
+            // Submit
+            try {
+                const response = await fetch('/api/network', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    successMsg.textContent = 'Configuration saved!';
+                    successMsg.style.display = 'block';
+                    // Redirect to profile page
+                    setTimeout(() => {
+                        window.location.href = '/profile';
+                    }, 1000);
+                } else {
+                    errorMsg.textContent = result.error || 'Failed to save configuration';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (error) {
+                errorMsg.textContent = 'Error: ' + error.message;
+                errorMsg.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

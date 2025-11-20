@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Complete - Orion Sentinel DNS HA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌐 Orion Sentinel DNS HA</h1>
+            <p class="subtitle">Setup Complete!</p>
+        </header>
+
+        <main>
+            <div class="progress-bar">
+                <div class="progress-step done">Network</div>
+                <div class="progress-step done">Profile</div>
+                <div class="progress-step done">Done</div>
+            </div>
+
+            <div class="completion-content">
+                <div class="success-icon">✅</div>
+                <h2>You're All Set!</h2>
+                <p class="completion-message">
+                    Your Orion Sentinel DNS HA configuration has been saved. 
+                    Follow the steps below to deploy the stack.
+                </p>
+
+                <div class="next-steps">
+                    <h3>Next Steps</h3>
+                    
+                    <div class="step-box">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>Deploy the Stack</h4>
+                            <p>Run the following command from your repository directory:</p>
+                            <div class="code-box">
+                                <code>bash scripts/install.sh</code>
+                                <button class="copy-btn" onclick="copyToClipboard('bash scripts/install.sh')">Copy</button>
+                            </div>
+                            <p class="help-text">This will create networks, pull images, and start all services.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-box">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>Configure Your Router</h4>
+                            <p>Point your router's DNS settings to:</p>
+                            <div class="highlight-box">
+                                <strong>Primary DNS:</strong> <span id="vip">{{ vip }}</span>
+                            </div>
+                            <p class="help-text">
+                                This ensures all devices on your network use Pi-hole for DNS.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="step-box">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>Access Your Services</h4>
+                            <ul class="service-links">
+                                <li>
+                                    <strong>Pi-hole Admin:</strong> 
+                                    <a href="http://{{ vip }}/admin" target="_blank">http://{{ vip }}/admin</a>
+                                </li>
+                                <li>
+                                    <strong>Grafana Dashboard:</strong> 
+                                    <a href="http://{{ pi_ip }}:3000" target="_blank">http://{{ pi_ip }}:3000</a>
+                                </li>
+                                <li>
+                                    <strong>Prometheus:</strong> 
+                                    <a href="http://{{ pi_ip }}:9090" target="_blank">http://{{ pi_ip }}:9090</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="step-box">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h4>Apply Your DNS Profile (Optional)</h4>
+                            <p>After deployment, apply your selected profile:</p>
+                            <div class="code-box">
+                                <code>python3 scripts/apply-profile.py --profile PROFILE_NAME</code>
+                                <button class="copy-btn" onclick="copyToClipboard('python3 scripts/apply-profile.py --profile standard')">Copy</button>
+                            </div>
+                            <p class="help-text">Replace PROFILE_NAME with: standard, family, or paranoid</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h4>📚 Documentation</h4>
+                    <p>For detailed guides and troubleshooting, check out:</p>
+                    <ul>
+                        <li><a href="https://github.com/yorgosroussakis/Orion-sentinel-ha-dns/blob/main/docs/install-single-pi.md" target="_blank">Single Pi Installation Guide</a></li>
+                        <li><a href="https://github.com/yorgosroussakis/Orion-sentinel-ha-dns/blob/main/docs/install-two-pi-ha.md" target="_blank">Two Pi HA Installation Guide</a></li>
+                        <li><a href="https://github.com/yorgosroussakis/Orion-sentinel-ha-dns/blob/main/docs/operations.md" target="_blank">Operations Guide</a></li>
+                        <li><a href="https://github.com/yorgosroussakis/Orion-sentinel-ha-dns/blob/main/TROUBLESHOOTING.md" target="_blank">Troubleshooting Guide</a></li>
+                    </ul>
+                </div>
+
+                <div class="warning-box">
+                    <strong>⚠️ Important:</strong> This wizard has completed first-run setup. 
+                    The wizard will now show this page on future visits. To re-run the wizard, 
+                    delete the file: <code>wizard/.setup_done</code>
+                </div>
+
+                <div class="button-group">
+                    <a href="/" class="btn btn-secondary">Back to Home</a>
+                    <a href="http://{{ vip }}/admin" class="btn btn-primary" target="_blank">Open Pi-hole →</a>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Orion Sentinel DNS HA &copy; 2024 | <a href="https://github.com/yorgosroussakis/Orion-sentinel-ha-dns" target="_blank">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+    </script>
+</body>
+</html>
