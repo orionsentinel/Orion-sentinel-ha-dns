@@ -136,11 +136,27 @@ fi
 # Confirm restoration
 if [ "$DRY_RUN" = false ]; then
     warn "This will overwrite current configuration files!"
+    warn "The DNS stack will be stopped during restoration."
+    echo ""
     read -p "Continue with restoration? (y/N): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         log "Restoration cancelled"
         exit 0
+    fi
+fi
+
+# Stop DNS stack before restoration
+DNS_STACK_DIR="$REPO_ROOT/stacks/dns"
+if [ "$DRY_RUN" = false ]; then
+    if [ -d "$DNS_STACK_DIR" ] && [ -f "$DNS_STACK_DIR/docker-compose.yml" ]; then
+        log "Stopping DNS stack..."
+        cd "$DNS_STACK_DIR"
+        docker compose down || warn "Failed to stop DNS stack (may not be running)"
+        cd "$REPO_ROOT"
+        log "✅ DNS stack stopped"
+    else
+        warn "DNS stack directory not found, skipping stack shutdown"
     fi
 fi
 
@@ -293,6 +309,25 @@ if [ -d "$BACKUP_DIR/grafana" ]; then
     fi
 fi
 
+# Start DNS stack after restoration
+if [ "$DRY_RUN" = false ]; then
+    if [ -d "$DNS_STACK_DIR" ] && [ -f "$DNS_STACK_DIR/docker-compose.yml" ]; then
+        echo ""
+        log "Starting DNS stack with restored configuration..."
+        cd "$DNS_STACK_DIR"
+        if docker compose up -d; then
+            log "✅ DNS stack started successfully"
+            # Wait a moment for containers to initialize
+            sleep 5
+            docker compose ps
+        else
+            error "Failed to start DNS stack"
+            error "Check logs with: cd $DNS_STACK_DIR && docker compose logs"
+        fi
+        cd "$REPO_ROOT"
+    fi
+fi
+
 # Summary
 echo ""
 echo "================================================================"
@@ -305,9 +340,9 @@ else
     log "Next steps:"
     log "  1. Review restored configuration files"
     log "  2. Update .env file with correct IP addresses if needed"
-    log "  3. Restart the stack: docker compose down && docker compose up -d"
-    log "  4. Verify services are running: docker ps"
-    log "  5. Test DNS resolution: dig @192.168.8.255 google.com"
+    log "  3. Verify services are running: docker ps"
+    log "  4. Test DNS resolution: dig @192.168.8.255 google.com"
+    log "  5. Check Pi-hole admin panel: http://192.168.8.251/admin"
 fi
 echo "================================================================"
 echo ""

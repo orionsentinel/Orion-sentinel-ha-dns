@@ -31,9 +31,21 @@ log "Backup location: $BACKUP_PATH"
 if [ -f "$REPO_ROOT/.env" ]; then
     log "Backing up .env file..."
     cp "$REPO_ROOT/.env" "$BACKUP_PATH/.env"
+    # Note: Sensitive values are backed up but not logged
 else
     warn ".env file not found"
 fi
+
+# Backup stack-specific .env files if they exist
+log "Checking for stack-specific .env files..."
+for stack_dir in "$REPO_ROOT/stacks"/*; do
+    if [ -d "$stack_dir" ] && [ -f "$stack_dir/.env" ]; then
+        stack_name=$(basename "$stack_dir")
+        log "  Backing up .env from stacks/$stack_name/"
+        mkdir -p "$BACKUP_PATH/stacks/$stack_name"
+        cp "$stack_dir/.env" "$BACKUP_PATH/stacks/$stack_name/.env"
+    fi
+done
 
 # Backup docker-compose files
 log "Backing up docker-compose files..."
