@@ -96,7 +96,7 @@ check_setup_ui_files() {
 start_ui() {
     log "Starting Web Setup UI..."
     
-    cd "$SETUP_UI_DIR"
+    cd "$SETUP_UI_DIR" || exit
     
     # Check if container is already running
     if docker compose ps 2>/dev/null | grep -q "rpi-dns-setup-ui.*Up"; then
@@ -149,18 +149,18 @@ start_ui() {
 
 stop_ui() {
     log "Stopping Web Setup UI..."
-    cd "$SETUP_UI_DIR"
+    cd "$SETUP_UI_DIR" || exit
     docker compose down
     log "Web Setup UI stopped"
 }
 
 show_logs() {
-    cd "$SETUP_UI_DIR"
+    cd "$SETUP_UI_DIR" || exit
     docker compose logs -f
 }
 
 show_status() {
-    cd "$SETUP_UI_DIR"
+    cd "$SETUP_UI_DIR" || exit
     if docker compose ps | grep -q "rpi-dns-setup-ui.*Up"; then
         log "Web Setup UI is running"
         docker compose ps

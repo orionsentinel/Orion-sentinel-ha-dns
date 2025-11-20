@@ -114,7 +114,7 @@ main() {
     # Step 1: Stop containers
     info "Stopping DNS stack containers..."
     if [[ -f "$DNS_STACK_DIR/docker-compose.yml" ]]; then
-        cd "$DNS_STACK_DIR"
+        cd "$DNS_STACK_DIR" || exit
         docker compose down || {
             warn "Failed to stop some containers. Continuing anyway..."
         }
@@ -122,7 +122,11 @@ main() {
     else
         warn "docker-compose.yml not found in $DNS_STACK_DIR"
         info "Attempting to stop containers manually..."
-        docker stop $(docker ps -q --filter "network=$NETWORK_NAME") 2>/dev/null || true
+        # Stop containers using the network
+        mapfile -t containers < <(docker ps -q --filter "network=$NETWORK_NAME")
+        if [ ${#containers[@]} -gt 0 ]; then
+            docker stop "${containers[@]}" 2>/dev/null || true
+        fi
     fi
     
     echo ""
@@ -168,7 +172,7 @@ main() {
     # Step 4: Restart containers
     info "Restarting DNS stack..."
     if [[ -f "$DNS_STACK_DIR/docker-compose.yml" ]]; then
-        cd "$DNS_STACK_DIR"
+        cd "$DNS_STACK_DIR" || exit
         
         # Build keepalived if needed
         if grep -q "build:" docker-compose.yml; then

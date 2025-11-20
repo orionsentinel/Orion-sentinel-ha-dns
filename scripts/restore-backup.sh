@@ -169,7 +169,7 @@ restore_pihole() {
     info "Restoring Pi-hole data..."
     
     # Start containers temporarily for restore
-    cd "${STACK_ROOT}/stacks/dns"
+    cd "${STACK_ROOT}/stacks/dns" || exit
     docker compose up -d pihole_primary pihole_secondary 2>/dev/null || true
     sleep 5
     
@@ -203,7 +203,7 @@ restore_grafana() {
     info "Restoring Grafana data..."
     
     if [ -f "${RESTORE_DIR}/grafana/data.tar.gz" ]; then
-        cd "${STACK_ROOT}/stacks/observability"
+        cd "${STACK_ROOT}/stacks/observability" || exit
         docker compose up -d grafana 2>/dev/null || true
         sleep 5
         
@@ -221,7 +221,7 @@ restore_prometheus() {
     info "Restoring Prometheus data..."
     
     if [ -f "${RESTORE_DIR}/prometheus/data.tar.gz" ]; then
-        cd "${STACK_ROOT}/stacks/observability"
+        cd "${STACK_ROOT}/stacks/observability" || exit
         docker compose up -d prometheus 2>/dev/null || true
         sleep 5
         

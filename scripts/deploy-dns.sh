@@ -55,7 +55,7 @@ main() {
     log "Starting DNS stack deployment"
     
     # Change to DNS stack directory
-    cd "$DNS_STACK_DIR"
+    cd "$DNS_STACK_DIR" || exit
     
     # Stop existing containers
     log "Stopping existing containers..."

@@ -334,7 +334,7 @@ EOF
     # Create WireGuard config directory
     print_info "Creating WireGuard config directory..."
     sudo mkdir -p /opt/rpi-ha-dns-stack/config/wireguard
-    sudo chown -R $(id -u):$(id -g) /opt/rpi-ha-dns-stack/config/wireguard
+    sudo chown -R "$(id -u):$(id -g)" /opt/rpi-ha-dns-stack/config/wireguard
     print_success "Config directory created"
     
     # Deploy VPN stack

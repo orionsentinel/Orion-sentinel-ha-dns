@@ -233,7 +233,7 @@ print_header "Creating WireGuard Configuration Directory"
 WG_CONFIG_DIR="/opt/rpi-ha-dns-stack/config/wireguard"
 if [ ! -d "$WG_CONFIG_DIR" ]; then
     sudo mkdir -p "$WG_CONFIG_DIR"
-    sudo chown -R $(id -u):$(id -g) "$WG_CONFIG_DIR"
+    sudo chown -R "$(id -u):$(id -g)" "$WG_CONFIG_DIR"
     print_success "Created $WG_CONFIG_DIR"
 else
     print_success "Directory $WG_CONFIG_DIR already exists"

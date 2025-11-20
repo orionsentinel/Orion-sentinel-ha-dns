@@ -112,7 +112,7 @@ clone_repository() {
         read -r -p "Do you want to update it? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            cd "$INSTALL_DIR"
+            cd "$INSTALL_DIR" || exit
             git pull
             log "Repository updated"
         else
@@ -124,7 +124,7 @@ clone_repository() {
         log "Repository cloned"
     fi
     
-    cd "$INSTALL_DIR"
+    cd "$INSTALL_DIR" || exit
 }
 
 launch_web_ui() {

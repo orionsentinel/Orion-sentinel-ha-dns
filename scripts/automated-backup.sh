@@ -216,7 +216,7 @@ EOF
 compress_backup() {
     info "Compressing backup..."
     
-    cd "${BACKUP_DIR}/tmp"
+    cd "${BACKUP_DIR}/tmp" || exit
     tar czf "${BACKUP_DIR}/${BACKUP_NAME}.tar.gz" "$BACKUP_NAME" 2>/dev/null
     
     BACKUP_SIZE=$(du -h "${BACKUP_DIR}/${BACKUP_NAME}.tar.gz" | cut -f1)

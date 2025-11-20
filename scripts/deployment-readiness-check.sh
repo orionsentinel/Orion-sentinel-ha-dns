@@ -28,13 +28,13 @@ echo "Checking Docker Compose configurations..."
 echo ""
 
 # Check if all required docker-compose files exist
-check_item $(test -f stacks/dns/docker-compose.yml && echo 0 || echo 1) \
+check_item "$(test -f stacks/dns/docker-compose.yml && echo 0 || echo 1)" \
     "DNS stack docker-compose.yml exists"
     
-check_item $(test -f stacks/observability/docker-compose.yml && echo 0 || echo 1) \
+check_item "$(test -f stacks/observability/docker-compose.yml && echo 0 || echo 1)" \
     "Observability stack docker-compose.yml exists"
     
-check_item $(test -f stacks/ai-watchdog/docker-compose.yml && echo 0 || echo 1) \
+check_item "$(test -f stacks/ai-watchdog/docker-compose.yml && echo 0 || echo 1)" \
     "AI-watchdog docker-compose.yml exists"
 
 echo ""
@@ -42,40 +42,40 @@ echo "Checking Signal webhook integration..."
 echo ""
 
 # Check Signal webhook bridge files
-check_item $(test -f stacks/observability/signal-webhook-bridge/app.py && echo 0 || echo 1) \
+check_item "$(test -f stacks/observability/signal-webhook-bridge/app.py && echo 0 || echo 1)" \
     "Signal webhook bridge app.py exists"
     
-check_item $(test -f stacks/observability/signal-webhook-bridge/Dockerfile && echo 0 || echo 1) \
+check_item "$(test -f stacks/observability/signal-webhook-bridge/Dockerfile && echo 0 || echo 1)" \
     "Signal webhook bridge Dockerfile exists"
 
 # Check if configuration files have been updated
-check_item $(grep -q "signal-webhook-bridge" stacks/observability/alertmanager/alertmanager.yml && echo 0 || echo 1) \
+check_item "$(grep -q "signal-webhook-bridge" stacks/observability/alertmanager/alertmanager.yml && echo 0 || echo 1)" \
     "Alertmanager configured for Signal"
     
-check_item $(grep -q "send_signal_notification" stacks/ai-watchdog/app.py && echo 0 || echo 1) \
+check_item "$(grep -q "send_signal_notification" stacks/ai-watchdog/app.py && echo 0 || echo 1)" \
     "AI-watchdog has Signal notification support"
 
 echo ""
 echo "Checking documentation..."
 echo ""
 
-check_item $(grep -q "CallMeBot" README.md && echo 0 || echo 1) \
+check_item "$(grep -q "CallMeBot" README.md && echo 0 || echo 1)" \
     "README documents CallMeBot setup"
     
-check_item $(test -f QA_TEST_RESULTS.md && echo 0 || echo 1) \
+check_item "$(test -f QA_TEST_RESULTS.md && echo 0 || echo 1)" \
     "QA test results document exists"
 
 echo ""
 echo "Checking environment configuration..."
 echo ""
 
-check_item $(grep -q "SIGNAL_API_KEY" .env.example && echo 0 || echo 1) \
+check_item "$(grep -q "SIGNAL_API_KEY" .env.example && echo 0 || echo 1)" \
     ".env.example has SIGNAL_API_KEY"
     
-check_item $(grep -q "SIGNAL_PHONE_NUMBER" .env.example && echo 0 || echo 1) \
+check_item "$(grep -q "SIGNAL_PHONE_NUMBER" .env.example && echo 0 || echo 1)" \
     ".env.example has SIGNAL_PHONE_NUMBER"
     
-check_item $(grep -q "callmebot" .env.example && echo 0 || echo 1) \
+check_item "$(grep -q "callmebot" .env.example && echo 0 || echo 1)" \
     ".env.example references CallMeBot"
 
 echo ""
@@ -83,10 +83,10 @@ echo "Checking Python dependencies..."
 echo ""
 
 # Verify requests library is in Dockerfile
-check_item $(grep -q "requests" stacks/observability/signal-webhook-bridge/Dockerfile && echo 0 || echo 1) \
+check_item "$(grep -q "requests" stacks/observability/signal-webhook-bridge/Dockerfile && echo 0 || echo 1)" \
     "Signal bridge Dockerfile includes requests library"
     
-check_item $(grep -q "requests" stacks/ai-watchdog/Dockerfile && echo 0 || echo 1) \
+check_item "$(grep -q "requests" stacks/ai-watchdog/Dockerfile && echo 0 || echo 1)" \
     "AI-watchdog Dockerfile includes requests library"
 
 echo ""

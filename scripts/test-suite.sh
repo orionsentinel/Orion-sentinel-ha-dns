@@ -167,7 +167,7 @@ test_required_services() {
             done
             
             if $all_present; then
-                log_pass "All required services present: $(basename $(dirname $compose_file))"
+                log_pass "All required services present: $(basename "$(dirname "$compose_file")")"
             fi
         fi
     done
@@ -520,9 +520,9 @@ test_docker_networks() {
     for compose_file in "${compose_files[@]}"; do
         if [ -f "$compose_file" ]; then
             if grep -q "networks:" "$compose_file" && grep -q "dns_net:" "$compose_file"; then
-                log_pass "Network configuration present: $(basename $(dirname $compose_file))"
+                log_pass "Network configuration present: $(basename "$(dirname "$compose_file")")"
             else
-                log_fail "Missing network configuration: $(basename $(dirname $compose_file))"
+                log_fail "Missing network configuration: $(basename "$(dirname "$compose_file")")"
             fi
         fi
     done
@@ -540,9 +540,9 @@ test_resource_limits() {
     for compose_file in "${compose_files[@]}"; do
         if [ -f "$compose_file" ]; then
             if grep -q "resources:" "$compose_file" && grep -q "limits:" "$compose_file"; then
-                log_pass "Resource limits defined: $(basename $(dirname $compose_file))"
+                log_pass "Resource limits defined: $(basename "$(dirname "$compose_file")")"
             else
-                log_fail "Missing resource limits: $(basename $(dirname $compose_file))"
+                log_fail "Missing resource limits: $(basename "$(dirname "$compose_file")")"
             fi
         fi
     done
@@ -700,5 +700,5 @@ EOF
 }
 
 # Run main
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit
 main "$@"

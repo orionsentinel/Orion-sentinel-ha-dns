@@ -73,7 +73,7 @@ backup_config() {
 check_git_status() {
     log "Checking git repository status..."
     
-    cd "$REPO_ROOT"
+    cd "$REPO_ROOT" || exit
     
     # Check for uncommitted changes
     if [[ -n $(git status --porcelain) ]]; then
@@ -96,7 +96,7 @@ check_git_status() {
 pull_updates() {
     log "Pulling latest changes from repository..."
     
-    cd "$REPO_ROOT"
+    cd "$REPO_ROOT" || exit
     
     # Fetch updates
     if ! git fetch origin; then
@@ -106,7 +106,7 @@ pull_updates() {
     
     # Check if there are updates
     LOCAL_COMMIT=$(git rev-parse HEAD)
-    REMOTE_COMMIT=$(git rev-parse origin/$(git branch --show-current))
+    REMOTE_COMMIT=$(git rev-parse "origin/$(git branch --show-current)")
     
     if [[ "$LOCAL_COMMIT" == "$REMOTE_COMMIT" ]]; then
         info "Already up to date! No updates available."
