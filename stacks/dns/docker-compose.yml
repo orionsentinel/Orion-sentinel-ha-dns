@@ -141,7 +141,6 @@ services:
     container_name: pihole-sync
     profiles:
       - single-pi-ha
-      - two-pi-ha-pi1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./pihole-sync.sh:/sync.sh:ro
@@ -149,6 +148,7 @@ services:
     restart: unless-stopped
     depends_on:
       - pihole_primary
+      - pihole_secondary
     environment:
       - SYNC_INTERVAL=${SYNC_INTERVAL:-300}
     deploy:
@@ -221,3 +221,6 @@ services:
 networks:
   dns_net:
     driver: bridge
+    # Note: Changed from external network to bridge driver for automatic IP assignment
+    # Services communicate via DNS names (e.g., unbound_primary) instead of hard-coded IPs
+

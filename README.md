@@ -389,7 +389,11 @@ The DNS stack supports **three flexible deployment modes** using Docker Compose 
 | `unbound_primary` | ✅ Pi1 | ✅ Pi1 | ✅ Pi1 | ❌ |
 | `unbound_secondary` | ✅ Pi1 | ❌ | ❌ | ✅ Pi2 |
 | `keepalived` | ✅ Pi1 | ❌ | ✅ Pi1 | ✅ Pi2 |
-| `pihole-sync` | ✅ Pi1 | ❌ | ✅ Pi1 | ❌ |
+| `pihole-sync` | ✅ Pi1 | ❌ | ❌ | ❌ |
+
+**Note on Pi-hole Sync**: 
+- In `single-pi-ha` mode, pihole-sync runs locally to sync between containers on the same host
+- In `two-pi-ha` mode, use external sync tools like [Gravity Sync](https://github.com/vmstan/gravity-sync) to sync Pi-hole configurations across hosts
 
 **Profile Usage:**
 - **Mode A (single-pi-ha)**: `docker compose --profile single-pi-ha up -d`
