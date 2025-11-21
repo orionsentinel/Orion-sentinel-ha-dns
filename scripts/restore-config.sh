@@ -2,7 +2,7 @@
 # Configuration Restore Script for Orion Sentinel DNS HA
 # Restores configuration from backup created by backup-config.sh
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
