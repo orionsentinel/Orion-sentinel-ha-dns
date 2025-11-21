@@ -46,8 +46,7 @@ services:
     profiles:
       - single-pi-ha
       - two-pi-simple
-      - two-pi-ha
-      - pi1
+      - two-pi-ha-pi1
     environment:
       - TZ=${TZ:-Europe/London}
       - WEBPASSWORD=${PIHOLE_PASSWORD}
@@ -66,8 +65,7 @@ services:
     hostname: pihole-secondary
     profiles:
       - single-pi-ha
-      - two-pi-ha
-      - pi2
+      - two-pi-ha-pi2
     environment:
       - TZ=${TZ:-Europe/London}
       - WEBPASSWORD=${PIHOLE_PASSWORD}
@@ -87,8 +85,7 @@ services:
     profiles:
       - single-pi-ha
       - two-pi-simple
-      - two-pi-ha
-      - pi1
+      - two-pi-ha-pi1
     networks:
       - dns_net
     volumes:
@@ -100,8 +97,7 @@ services:
     hostname: unbound-secondary
     profiles:
       - single-pi-ha
-      - two-pi-ha
-      - pi2
+      - two-pi-ha-pi2
     networks:
       - dns_net
     volumes:
@@ -113,9 +109,8 @@ services:
     hostname: keepalived
     profiles:
       - single-pi-ha
-      - two-pi-ha
-      - pi1
-      - pi2
+      - two-pi-ha-pi1
+      - two-pi-ha-pi2
     network_mode: host
     cap_add:
       - NET_ADMIN
@@ -146,7 +141,7 @@ services:
     container_name: pihole-sync
     profiles:
       - single-pi-ha
-      - two-pi-ha
+      - two-pi-ha-pi1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./pihole-sync.sh:/sync.sh:ro
@@ -154,7 +149,6 @@ services:
     restart: unless-stopped
     depends_on:
       - pihole_primary
-      - pihole_secondary
     environment:
       - SYNC_INTERVAL=${SYNC_INTERVAL:-300}
     deploy:

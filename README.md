@@ -294,6 +294,119 @@ Each deployment option includes complete docker-compose files, configurations, a
 
 ```
 
+---
+
+## 🚀 DNS Stack Deployment Modes
+
+The DNS stack supports **three flexible deployment modes** using Docker Compose profiles. Choose the mode that fits your infrastructure and availability requirements.
+
+### Mode A: Single-Pi HA (`single-pi-ha`)
+
+**One Raspberry Pi running all services with local redundancy**
+
+- **Services**: Both primary and secondary Pi-hole + Unbound instances
+- **High Availability**: Keepalived manages VIP for service failover
+- **Use Case**: Simple setup with container-level redundancy on one host
+- **Deployment**:
+  ```bash
+  # Copy and configure the environment file
+  cp env/.env.single-pi-ha.example env/.env
+  # Edit env/.env with your settings (VIP, passwords, etc.)
+  
+  # Deploy all services on one Pi
+  cd stacks/dns
+  docker compose --profile single-pi-ha up -d
+  ```
+
+**Services Running**: `pihole_primary`, `pihole_secondary`, `unbound_primary`, `unbound_secondary`, `keepalived`, `pihole-sync`
+
+**Access DNS via**: `${DNS_VIP}` (e.g., 192.168.8.249)
+
+---
+
+### Mode B: Two-Pi Simple (`two-pi-simple`)
+
+**Two Raspberry Pis, active-passive, no automatic failover**
+
+- **Services**: Primary services only on Pi1 (no secondary services)
+- **High Availability**: Manual failover required
+- **Use Case**: Simple two-Pi setup where Pi2 is passive/standby
+- **Deployment**:
+  ```bash
+  # Copy and configure the environment file
+  cp env/.env.two-pi-simple.example env/.env
+  # Edit env/.env with your settings
+  
+  # On Pi1 only - deploy primary services
+  cd stacks/dns
+  docker compose --profile two-pi-simple up -d
+  ```
+
+**Services Running on Pi1**: `pihole_primary`, `unbound_primary`
+
+**Services Running on Pi2**: None (Pi2 is standby)
+
+**Access DNS via**: Pi1's IP address (e.g., 192.168.8.11)
+
+---
+
+### Mode C: Two-Pi HA (`two-pi-ha`)
+
+**Two Raspberry Pis with full high availability and automatic failover**
+
+- **Services**: Primary services on Pi1, secondary services on Pi2
+- **High Availability**: Keepalived manages floating VIP between both Pis
+- **Use Case**: Production setup with hardware-level redundancy
+- **Deployment**:
+  ```bash
+  # Copy and configure the environment file (same on both Pis)
+  cp env/.env.two-pi-ha.example env/.env
+  # Edit env/.env with your settings (both Pi IPs, VIP, passwords, etc.)
+  
+  # On Pi1 - deploy primary services
+  cd stacks/dns
+  docker compose --profile two-pi-ha-pi1 up -d
+  
+  # On Pi2 - deploy secondary services
+  cd stacks/dns
+  docker compose --profile two-pi-ha-pi2 up -d
+  ```
+
+**Services Running on Pi1**: `pihole_primary`, `unbound_primary`, `keepalived`, `pihole-sync`
+
+**Services Running on Pi2**: `pihole_secondary`, `unbound_secondary`, `keepalived`
+
+**Access DNS via**: `${DNS_VIP}` (e.g., 192.168.8.249) - automatically fails over between Pis
+
+---
+
+### Service-to-Mode-to-Host Mapping
+
+| Service | single-pi-ha | two-pi-simple | two-pi-ha (Pi1) | two-pi-ha (Pi2) |
+|---------|--------------|---------------|-----------------|-----------------|
+| `pihole_primary` | ✅ Pi1 | ✅ Pi1 | ✅ Pi1 | ❌ |
+| `pihole_secondary` | ✅ Pi1 | ❌ | ❌ | ✅ Pi2 |
+| `unbound_primary` | ✅ Pi1 | ✅ Pi1 | ✅ Pi1 | ❌ |
+| `unbound_secondary` | ✅ Pi1 | ❌ | ❌ | ✅ Pi2 |
+| `keepalived` | ✅ Pi1 | ❌ | ✅ Pi1 | ✅ Pi2 |
+| `pihole-sync` | ✅ Pi1 | ❌ | ✅ Pi1 | ❌ |
+
+**Profile Usage:**
+- **Mode A (single-pi-ha)**: `docker compose --profile single-pi-ha up -d`
+- **Mode B (two-pi-simple)**: `docker compose --profile two-pi-simple up -d`
+- **Mode C (two-pi-ha)**: 
+  - On Pi1: `docker compose --profile two-pi-ha-pi1 up -d`
+  - On Pi2: `docker compose --profile two-pi-ha-pi2 up -d`
+
+### Key Design Decisions
+
+1. **Service Name Resolution**: Services communicate using DNS names (e.g., `unbound_primary#5335`) instead of hard-coded IP addresses
+2. **Dynamic IP Assignment**: Docker automatically assigns IPs - no manual IP configuration needed
+3. **Profile-Based Control**: Profiles determine which services run in each mode
+4. **Environment-Based Configuration**: Each mode has its own `.env.*.example` file with relevant variables
+
+---
+
 ## Deployment Options 🎯
 
 This repository provides **three complete deployment configurations**:
