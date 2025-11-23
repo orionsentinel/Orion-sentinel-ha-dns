@@ -1,3 +1,26 @@
+# Docker Compose for Orion Sentinel DNS HA Stack
+# Core DNS Services - Required for both Standalone and Integrated modes
+#
+# This file contains ONLY the essential DNS services:
+# - Pi-hole (primary and/or secondary)
+# - Unbound (primary and/or secondary)
+# - Keepalived (for VIP management)
+# - Pi-hole Sync (for single-pi-ha mode)
+#
+# These services are independent and do NOT require:
+# - CoreSrv or any external monitoring infrastructure
+# - Prometheus exporters (those are in stacks/monitoring/)
+# - Promtail log shipping (those are in stacks/agents/)
+#
+# The stack works perfectly standalone and becomes an observability
+# sensor when optional monitoring/logging components are added.
+#
+# Deployment Profiles:
+# - single-pi-ha: All services on one Pi
+# - two-pi-simple: Primary services only (no HA)
+# - two-pi-ha-pi1: Primary services + Keepalived on Pi1
+# - two-pi-ha-pi2: Secondary services + Keepalived on Pi2
+#
 # Common configuration anchors for reusability
 x-pihole-common: &pihole-common
   image: pihole/pihole:latest

@@ -120,6 +120,109 @@ See [docs/ORION_SENTINEL_INTEGRATION.md](docs/ORION_SENTINEL_INTEGRATION.md) for
 
 ---
 
+## 🎯 Deployment Modes
+
+This repository is designed to be **fully functional as a standalone HA DNS appliance**, and can optionally integrate with CoreSrv for centralized monitoring and logging.
+
+### Standalone Mode (Default) ⭐
+
+**Perfect for users who just want a reliable DNS solution on their Raspberry Pi.**
+
+**Required Components:**
+- ✅ **Pi-hole** - Network-wide ad blocking
+- ✅ **Unbound** - Recursive DNS with DNSSEC validation
+- ✅ **Keepalived** - High availability with automatic failover
+
+**Optional Components:**
+- 📊 **Exporters** (node, pihole, unbound) - Local metrics collection
+- 📝 **Promtail** - Local log aggregation
+
+**Deployment:**
+```bash
+# Deploy core DNS services only
+cd stacks/dns
+docker compose --profile single-pi-ha up -d
+
+# Optionally add local monitoring
+cd ../monitoring
+docker compose -f docker-compose.exporters.yml up -d
+```
+
+**Key Features:**
+- Works completely standalone without any external dependencies
+- All DNS services start and run independently
+- Monitoring/logging components are entirely optional
+- Perfect for home users who want privacy and HA DNS
+
+---
+
+### Integrated Mode (with CoreSrv)
+
+**For advanced users running the full Orion Sentinel ecosystem with centralized observability.**
+
+**Everything from Standalone Mode, PLUS:**
+- 📊 **Metrics Federation** - Pi-hole, Unbound, and Node metrics scraped by CoreSrv Prometheus
+- 📝 **Log Shipping** - DNS logs forwarded to CoreSrv Loki via Promtail
+- 🎨 **Unified Dashboards** - Centralized visualization in CoreSrv Grafana
+- 🔗 **Cross-Stack Integration** - Correlate DNS data with security events from NSM Pi
+
+**Deployment:**
+```bash
+# 1. Deploy core DNS services
+cd stacks/dns
+docker compose --profile single-pi-ha up -d
+
+# 2. Deploy exporters for metrics
+cd ../monitoring
+docker compose -f docker-compose.exporters.yml up -d
+
+# 3. Configure and deploy Promtail for log shipping
+cd ../agents/pi-dns
+
+# Set CoreSrv IP in environment or config
+export LOKI_URL=http://192.168.8.100:3100  # Your CoreSrv IP
+# OR edit promtail-config.example.yml and save as promtail-config.yml
+
+docker compose up -d
+```
+
+**Environment Variables:**
+- `CORESRV_IP` - IP address of your CoreSrv instance (default: 192.168.8.100)
+- `LOKI_URL` - Loki endpoint for log shipping (default: http://192.168.8.100:3100)
+
+**Key Points:**
+- ✅ Core DNS services **never depend** on CoreSrv - they start even if exporters/Promtail fail
+- ✅ Exporters expose metrics locally on standard ports (9100, 9617, etc.)
+- ✅ CoreSrv's Prometheus scrapes these metrics over the network
+- ✅ Promtail ships logs to CoreSrv's Loki only when `LOKI_URL` is configured
+- ✅ If CoreSrv is unavailable, DNS continues to work normally
+
+**Documentation:**
+- 📖 **[SPoG Integration Guide](docs/SPOG_INTEGRATION_GUIDE.md)** - Complete CoreSrv setup
+- 📖 **[SPoG Quick Reference](docs/SPOG_QUICK_REFERENCE.md)** - Quick start guide
+- 📖 **[Observability Guide](docs/observability.md)** - Monitoring configuration
+
+---
+
+### Comparison
+
+| Feature | Standalone Mode | Integrated Mode |
+|---------|----------------|-----------------|
+| **DNS Services** | ✅ Pi-hole, Unbound, Keepalived | ✅ Same |
+| **High Availability** | ✅ Automatic failover | ✅ Same |
+| **Local Web UI** | ✅ Pi-hole dashboard | ✅ Same |
+| **Metrics Export** | ⚪ Optional (local only) | ✅ Scraped by CoreSrv |
+| **Log Shipping** | ⚪ Optional (local only) | ✅ Sent to CoreSrv Loki |
+| **Centralized Dashboards** | ❌ Not available | ✅ CoreSrv Grafana |
+| **Cross-Stack Correlation** | ❌ Not available | ✅ DNS + Security events |
+| **External Dependencies** | ❌ None | ⚪ CoreSrv (optional) |
+
+**Bottom Line:**
+- **Standalone Mode**: This repo is a complete, production-ready HA DNS solution that works perfectly on its own.
+- **Integrated Mode**: When connected to CoreSrv, it becomes a smart sensor in the larger Orion Sentinel security platform, while maintaining full independence.
+
+---
+
 ## 🆕 Phase 2 Features - Production-Ready Enhancements
 
 ### 🏥 Advanced Health Checking

@@ -1,6 +1,31 @@
 # Docker Compose for DNS HA Monitoring Stack
 # Optional monitoring components: Prometheus exporters for metrics collection
-# This extends the main DNS stack with observability components
+#
+# OPTIONAL COMPONENT - Works in both Standalone and Integrated modes
+#
+# This extends the main DNS stack with observability components that expose metrics:
+# - Standalone mode: Metrics available locally for manual inspection
+# - Integrated mode: Metrics scraped by CoreSrv Prometheus for centralized monitoring
+#
+# Usage:
+#   # Standalone mode (optional local monitoring)
+#   docker compose -f docker-compose.exporters.yml up -d
+#
+#   # Integrated mode (metrics scraped by CoreSrv)
+#   # 1. Deploy exporters (same as standalone)
+#   docker compose -f docker-compose.exporters.yml up -d
+#   # 2. Configure CoreSrv Prometheus to scrape these endpoints
+#   # 3. See docs/SPOG_INTEGRATION_GUIDE.md for details
+#
+# Metrics Endpoints (accessible on host network):
+#   - Node Exporter: http://host-ip:9100/metrics
+#   - Pi-hole Primary: http://host-ip:9617/metrics
+#   - Pi-hole Secondary: http://host-ip:9618/metrics
+#   - Blackbox Exporter: http://host-ip:9115/metrics
+#   - cAdvisor: http://host-ip:8080/metrics
+#
+# NOTE: Core DNS services (Pi-hole, Unbound, Keepalived) do NOT depend on these exporters.
+#       They will continue to function normally even if exporters fail or are not deployed.
 
 version: '3.8'
 

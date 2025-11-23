@@ -1,5 +1,7 @@
 # Pi DNS Agent - Docker Compose Configuration
-# Ships Pi-hole and Unbound logs to Dell CoreSrv Loki (SPoG mode)
+# Ships Pi-hole and Unbound logs to Dell CoreSrv Loki (Integrated mode)
+#
+# OPTIONAL COMPONENT - Only needed for Integrated mode with CoreSrv
 #
 # This is part of the Single Pane of Glass (SPoG) architecture where:
 # - Dell CoreSrv hosts centralized observability (Loki, Grafana, Prometheus, Traefik, Authelia)
@@ -8,12 +10,25 @@
 #
 # Prerequisites:
 # 1. Copy promtail-config.example.yml to promtail-config.yml
-# 2. Update the Dell CoreSrv IP in promtail-config.yml
+# 2. Update the Dell CoreSrv IP in promtail-config.yml OR set LOKI_URL environment variable
 # 3. Ensure firewall allows Pi DNS -> Dell port 3100
 # 4. Set LOKI_URL in .env or export it before running
 #
+# Environment Variables:
+#   LOKI_URL - Loki endpoint URL (default: http://192.168.8.100:3100)
+#   CORESRV_IP - CoreSrv IP address (alternative to full LOKI_URL)
+#
 # Usage:
+#   # Option 1: Using environment variable
+#   export LOKI_URL=http://your-coresrv-ip:3100
 #   docker compose up -d
+#
+#   # Option 2: Using .env file
+#   echo "LOKI_URL=http://your-coresrv-ip:3100" >> .env
+#   docker compose up -d
+#
+# NOTE: Core DNS services (Pi-hole, Unbound, Keepalived) do NOT depend on this.
+#       They will continue to function normally even if Promtail fails or is not deployed.
 
 version: '3.8'
 
