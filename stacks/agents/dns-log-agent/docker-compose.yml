@@ -1,5 +1,27 @@
 # DNS Log Agent - Example Configuration
 # Ships Pi-hole and Unbound logs to Loki on the Security Pi (orion-sentinel-nsm-ai)
+#
+# OPTIONAL COMPONENT - Only needed for Integrated mode with NSM/AI Pi or CoreSrv
+#
+# This agent forwards DNS logs to a centralized Loki instance for:
+# - Security analysis and correlation
+# - Long-term log retention
+# - Unified observability
+#
+# Prerequisites:
+# 1. Have a Loki instance running (on NSM Pi or CoreSrv)
+# 2. Set LOKI_URL environment variable or update promtail.yml
+# 3. Ensure firewall allows traffic to Loki port (default: 3100)
+#
+# Environment Variables:
+#   LOKI_URL - Loki endpoint URL (default: http://192.168.8.100:3100)
+#
+# Usage:
+#   export LOKI_URL=http://your-loki-ip:3100
+#   docker compose up -d
+#
+# NOTE: Core DNS services (Pi-hole, Unbound, Keepalived) do NOT depend on this.
+#       They will continue to function normally even if Promtail fails or is not deployed.
 
 version: '3.8'
 

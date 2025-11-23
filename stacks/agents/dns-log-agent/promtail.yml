@@ -1,5 +1,14 @@
 # Promtail Configuration
-# Collects and ships DNS logs to Loki on Security Pi
+# Collects and ships DNS logs to Loki on Security Pi or CoreSrv
+#
+# OPTIONAL COMPONENT - Only needed for Integrated mode
+#
+# This config uses the LOKI_URL environment variable which is set in docker-compose.yml
+# Default: http://192.168.8.100:3100
+#
+# To use a different Loki instance:
+#   export LOKI_URL=http://your-loki-ip:3100
+#   docker compose up -d
 
 server:
   http_listen_port: 9080
@@ -9,6 +18,7 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
+  # Loki endpoint - uses LOKI_URL environment variable
   - url: ${LOKI_URL}/loki/api/v1/push
     # Optional: Add authentication if Loki requires it
     # basic_auth:

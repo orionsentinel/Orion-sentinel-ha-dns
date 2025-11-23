@@ -4,7 +4,56 @@ Observability components for Orion Sentinel DNS HA.
 
 ## Overview
 
-This directory contains monitoring exporters and configurations for comprehensive DNS stack observability.
+This directory contains **optional** monitoring exporters and configurations for comprehensive DNS stack observability.
+
+**These components work in both Standalone and Integrated modes:**
+- **Standalone mode**: Exporters run locally, metrics accessible via HTTP endpoints
+- **Integrated mode**: Same as standalone, plus CoreSrv Prometheus scrapes the metrics
+
+**Important:** Core DNS services (Pi-hole, Unbound, Keepalived) do NOT depend on these exporters. They will continue to function normally even if exporters are not deployed or fail to start.
+
+## Deployment Modes
+
+### Standalone Mode
+
+Exporters expose metrics locally for manual inspection or local Prometheus:
+
+```bash
+# Deploy exporters
+docker compose -f docker-compose.exporters.yml up -d
+
+# Access metrics directly
+curl http://localhost:9100/metrics  # Node metrics
+curl http://localhost:9617/metrics  # Pi-hole primary metrics
+curl http://localhost:9115/metrics  # Blackbox exporter
+```
+
+**Use cases:**
+- Monitor DNS stack health locally
+- Troubleshoot performance issues
+- Run local Prometheus/Grafana instance
+- No external dependencies
+
+### Integrated Mode (with CoreSrv)
+
+Same deployment, but CoreSrv's Prometheus scrapes these metrics:
+
+```bash
+# 1. Deploy exporters (same as standalone)
+docker compose -f docker-compose.exporters.yml up -d
+
+# 2. Configure CoreSrv Prometheus to scrape these endpoints
+# See docs/SPOG_INTEGRATION_GUIDE.md for Prometheus configuration
+
+# 3. Access unified dashboards on CoreSrv Grafana
+# http://coresrv-ip:3000
+```
+
+**Benefits:**
+- Centralized metrics across all Pis
+- Unified dashboards in CoreSrv Grafana
+- Long-term metrics retention
+- Cross-stack correlation (DNS + Security)
 
 ## Components
 
