@@ -1,14 +1,25 @@
 # Promtail Configuration for Pi DNS Agent
-# Ships Pi-hole and Unbound logs to Dell CoreSrv Loki (SPoG mode)
+# Ships Pi-hole and Unbound logs to Dell CoreSrv Loki (Integrated mode)
 #
 # This configuration is designed for the Single Pane of Glass (SPoG) architecture
 # where the Dell CoreSrv hosts centralized observability (Loki, Grafana, Prometheus)
 #
+# OPTIONAL COMPONENT - Only needed for Integrated mode with CoreSrv
+#
 # Setup Instructions:
-# 1. Copy this file to promtail-config.yml
-# 2. Update the Dell CoreSrv IP address in the clients URL below
-# 3. Deploy using the docker-compose.yml in this directory
-# 4. Ensure firewall allows traffic from Pi DNS to Dell port 3100
+# Option 1 (Recommended): Use environment variables
+#   1. Copy this file to promtail-config.yml (no edits needed)
+#   2. Set LOKI_URL environment variable before deploying
+#      export LOKI_URL=http://your-coresrv-ip:3100
+#   3. Deploy using docker-compose.yml
+#
+# Option 2: Edit config file directly
+#   1. Copy this file to promtail-config.yml
+#   2. Replace ${LOKI_URL} below with your actual Loki URL
+#   3. Deploy using docker-compose.yml
+#
+# Note: The environment variable LOKI_URL is set in docker-compose.yml
+#       with a default value of http://192.168.8.100:3100
 
 server:
   http_listen_port: 9080
@@ -18,8 +29,10 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  # Dell CoreSrv Loki endpoint - UPDATE THIS IP!
-  - url: http://192.168.8.100:3100/loki/api/v1/push
+  # Dell CoreSrv Loki endpoint
+  # Uses LOKI_URL environment variable (set in docker-compose.yml or via export)
+  # Default: http://192.168.8.100:3100
+  - url: ${LOKI_URL}/loki/api/v1/push
 
     # Batching configuration for efficiency
     batchwait: 1s
