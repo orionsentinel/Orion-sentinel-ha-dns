@@ -73,6 +73,8 @@ These guides walk you through:
 ### 🔗 Orion Sentinel Integration
 - **[🛡️ NSM/AI Integration Guide](docs/ORION_SENTINEL_INTEGRATION.md)** - Connect with Network Security Monitoring & AI ⭐ NEW
 - **[🏗️ Orion Sentinel Architecture](docs/ORION_SENTINEL_ARCHITECTURE.md)** - Complete two-Pi ecosystem overview ⭐ NEW
+- **[🖥️ Single Pane of Glass (SPoG) Integration](docs/SPOG_INTEGRATION_GUIDE.md)** - Centralized observability on Dell CoreSrv ⭐ NEW
+- **[⚡ SPoG Quick Reference](docs/SPOG_QUICK_REFERENCE.md)** - Quick setup guide for SPoG mode ⭐ NEW
 
 ---
 
