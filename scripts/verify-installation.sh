@@ -3,7 +3,7 @@
 # Tests the complete installation to ensure all components work correctly
 # Usage: bash scripts/verify-installation.sh [--verbose]
 
-set -u
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -125,7 +125,7 @@ test_required_software() {
     
     # Check Docker
     if command -v docker &> /dev/null; then
-        local docker_version=$(docker --version | grep -oP '\d+\.\d+\.\d+' | head -1)
+        local docker_version=$(docker --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
         log_pass "Docker: Installed (version $docker_version)"
         
         # Check if Docker daemon is running
@@ -147,10 +147,10 @@ test_required_software() {
     
     # Check Docker Compose
     if docker compose version &> /dev/null; then
-        local compose_version=$(docker compose version | grep -oP '\d+\.\d+\.\d+' | head -1)
+        local compose_version=$(docker compose version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
         log_pass "Docker Compose: Plugin installed (version $compose_version)"
     elif command -v docker-compose &> /dev/null; then
-        local compose_version=$(docker-compose --version | grep -oP '\d+\.\d+\.\d+' | head -1)
+        local compose_version=$(docker-compose --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
         log_warn "Docker Compose: Standalone version found (plugin recommended)"
     else
         log_fail "Docker Compose: Not installed (required)"
@@ -493,7 +493,7 @@ show_summary() {
         echo -e "${RED}Please fix the failed checks above before proceeding.${NC}"
         echo ""
         echo -e "${CYAN}Common fixes:${NC}"
-        echo -e "  • Install Docker: ${BOLD}curl -fsSL https://get.docker.com | sudo sh${NC}"
+        echo -e "  • Install Docker: Download and review https://get.docker.com first, then run with sudo sh"
         echo -e "  • Install Docker Compose: ${BOLD}sudo apt install docker-compose-plugin${NC}"
         echo -e "  • Add user to docker group: ${BOLD}sudo usermod -aG docker \$USER${NC}"
         echo ""
