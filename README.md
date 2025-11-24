@@ -17,10 +17,13 @@ A production-ready, high-availability DNS stack for Raspberry Pi, part of the **
    ```bash
    git clone https://github.com/yorgosroussakis/Orion-sentinel-ha-dns.git
    cd Orion-sentinel-ha-dns
-   bash scripts/install.sh
+   # Optional: Verify your system is ready
+   bash scripts/verify-installation.sh
+   # Run the installer
+   bash install.sh
    ```
 
-2. Visit the web wizard at `http://<your-pi-ip>:8080`
+2. Visit the web wizard at `http://<your-pi-ip>:5555`
 
 3. Follow the 3-step wizard:
    - Choose single-node or HA mode
@@ -29,6 +32,7 @@ A production-ready, high-availability DNS stack for Raspberry Pi, part of the **
 
 4. Deploy and you're done!
 
+📖 **[Installation Steps Quick Reference](INSTALLATION_STEPS.md)** - Step-by-step installation guide ⭐ NEW  
 📖 **[First-Run Wizard Guide](docs/first-run-wizard.md)** - Complete wizard documentation
 
 ### For Power Users (Manual Setup)
@@ -49,10 +53,13 @@ These guides walk you through:
 ## 📚 Documentation Quick Links
 
 ### Getting Started
-- **[🎯 Deployment Modes](docs/MODES_QUICK_REFERENCE.md)** - Standalone vs Integrated mode guide ⭐ NEW
-- **[🧙 First-Run Web Wizard](docs/first-run-wizard.md)** - Guided web-based setup ⭐ NEW
-- **[📖 Single-Pi Installation](docs/install-single-pi.md)** - Step-by-step single node setup ⭐ NEW
-- **[📖 Two-Pi HA Installation](docs/install-two-pi-ha.md)** - Step-by-step dual node HA setup ⭐ NEW
+- **[⚡ INSTALLATION_STEPS.md](INSTALLATION_STEPS.md)** - Quick reference for installation steps ⭐ NEW
+- **[📖 INSTALL.md](INSTALL.md)** - Comprehensive installation guide ⭐ NEW
+- **[✅ TEST_RESULTS.md](TEST_RESULTS.md)** - Installation verification test results ⭐ NEW
+- **[🎯 Deployment Modes](docs/MODES_QUICK_REFERENCE.md)** - Standalone vs Integrated mode guide
+- **[🧙 First-Run Web Wizard](docs/first-run-wizard.md)** - Guided web-based setup
+- **[📖 Single-Pi Installation](docs/install-single-pi.md)** - Step-by-step single node setup
+- **[📖 Two-Pi HA Installation](docs/install-two-pi-ha.md)** - Step-by-step dual node HA setup
 - **[🚀 QUICKSTART.md](QUICKSTART.md)** - One-page guide to get started fast
 - **[📖 INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md)** - Detailed installation instructions
 
