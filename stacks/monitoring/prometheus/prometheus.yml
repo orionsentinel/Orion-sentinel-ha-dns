@@ -1,5 +1,7 @@
 # Prometheus Configuration for DNS HA Stack
 # Scrapes metrics from Pi-hole, Unbound, and system exporters
+#
+# DNS Flow: Clients → VIP (Keepalived) → Pi-hole → Unbound → NextDNS over DoT
 
 global:
   scrape_interval: 15s
@@ -83,6 +85,49 @@ scrape_configs:
           - '192.168.8.254'  # Secondary Unbound
         labels:
           probe_type: 'dns'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # DNS VIP Probe - Dedicated job for VIP availability monitoring
+  # This is the critical probe for HA - verifies the floating VIP is responding
+  - job_name: 'dns_vip_probe'
+    metrics_path: /probe
+    params:
+      module: [dns_google]
+    static_configs:
+      - targets:
+          - '192.168.8.255:53'  # DNS VIP (Keepalived)
+        labels:
+          probe_type: 'dns_vip'
+          role: 'vip'
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.+):.*'
+        target_label: __param_target
+        replacement: '${1}'
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # NextDNS DoT Health Probe - Verifies upstream DoT connectivity
+  # Checks TLS connection to NextDNS on port 853
+  - job_name: 'nextdns_dot_probe'
+    metrics_path: /probe
+    params:
+      module: [tls_nextdns]
+    static_configs:
+      - targets:
+          - '45.90.28.0:853'   # NextDNS Anycast IPv4 primary
+          - '45.90.30.0:853'   # NextDNS Anycast IPv4 secondary
+        labels:
+          probe_type: 'tls'
+          upstream: 'nextdns'
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

@@ -1,5 +1,5 @@
 # Blackbox Exporter Configuration
-# Probes for DNS availability and latency
+# Probes for DNS availability, latency, and upstream health
 
 modules:
   # DNS probe - Query google.com via DNS server
@@ -30,6 +30,18 @@ modules:
       validate_answer_rrs:
         fail_if_not_matches_regexp:
           - ".*"
+
+  # TLS probe for NextDNS DoT health check
+  # Verifies TLS connectivity to NextDNS upstream on port 853
+  tls_nextdns:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      tls: true
+      tls_config:
+        server_name: "dns.nextdns.io"
+        insecure_skip_verify: false
+      preferred_ip_protocol: "ip4"
 
   # HTTP probe for Pi-hole admin interface
   http_pihole:
