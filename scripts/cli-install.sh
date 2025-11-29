@@ -295,12 +295,14 @@ parse_args() {
 
 validate_ip() {
     local ip=$1
+    # Check basic format: four groups of 1-3 digits separated by dots
     if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
         local IFS='.'
         local -a octets
         read -ra octets <<< "$ip"
         for octet in "${octets[@]}"; do
-            if ((octet > 255)); then
+            # Validate octet is numeric and within valid range (0-255)
+            if [[ ! $octet =~ ^[0-9]+$ ]] || ((octet > 255)); then
                 return 1
             fi
         done
@@ -458,11 +460,15 @@ check_docker() {
         
         if [[ "$INTERACTIVE" == true ]]; then
             echo ""
+            warn "SECURITY: About to download and execute Docker installation script from https://get.docker.com"
+            warn "This script will be run with elevated privileges."
             read -r -p "Would you like to install Docker? (Y/n): " response
             if [[ "$response" =~ ^[Nn]$ ]]; then
                 err "Docker is required to run this stack"
                 exit 1
             fi
+        else
+            warn "Installing Docker from https://get.docker.com (non-interactive mode)"
         fi
         
         info "Installing Docker..."
@@ -716,7 +722,14 @@ generate_env_file() {
         env_file="/dev/stdout"
     fi
     
-    # Set derived values
+    # Validate HOST_IP before deriving other IPs
+    if ! validate_ip "$HOST_IP"; then
+        err "Invalid HOST_IP: $HOST_IP"
+        err "Cannot derive network configuration from invalid IP"
+        exit 1
+    fi
+    
+    # Set derived values from HOST_IP
     PRIMARY_DNS_IP="${PRIMARY_DNS_IP:-$(echo "$HOST_IP" | awk -F. '{print $1"."$2"."$3".251"}')}"
     SECONDARY_DNS_IP="${SECONDARY_DNS_IP:-$(echo "$HOST_IP" | awk -F. '{print $1"."$2"."$3".252"}')}"
     local unbound_primary
@@ -753,6 +766,7 @@ generate_env_file() {
         echo "PIHOLE_PASSWORD=${PIHOLE_PASSWORD}"
         echo "PIHOLE_DNS1=127.0.0.1#5335"
         echo "PIHOLE_DNS2=127.0.0.1#5335"
+        # Note: WEBPASSWORD uses shell variable reference that Pi-hole expands at runtime
         echo 'WEBPASSWORD=${PIHOLE_PASSWORD}'
         echo ""
         echo "# Grafana Configuration"
