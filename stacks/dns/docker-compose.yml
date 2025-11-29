@@ -109,8 +109,8 @@ services:
     volumes:
       - ./pihole1/etc-pihole:/etc/pihole
       - ./pihole1/etc-dnsmasq.d:/etc/dnsmasq.d
-    # Note: depends_on for unbound_primary is removed when using NextDNS mode
-    # The dependency is managed by profiles (see unbound-primary-nextdns profile)
+    # Note: Unbound dependency is implicit via the PIHOLE_DNS_ environment variable
+    # When using NextDNS mode, PIHOLE_DNS_PRIMARY is set to NextDNS endpoints
 
   # =====================================================
   # Pi-hole Secondary Service
@@ -142,8 +142,8 @@ services:
     volumes:
       - ./pihole2/etc-pihole:/etc/pihole
       - ./pihole2/etc-dnsmasq.d:/etc/dnsmasq.d
-    # Note: depends_on for unbound_secondary remains in all modes
-    # Secondary always has Unbound available as fallback
+    # Note: Unbound dependency is implicit via the PIHOLE_DNS_ environment variable
+    # Secondary node typically keeps Unbound as fallback when NextDNS is enabled
 
   # =====================================================
   # Unbound Primary Service

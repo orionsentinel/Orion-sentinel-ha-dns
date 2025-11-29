@@ -80,7 +80,10 @@ With **NextDNS integration**, you can:
 
 ### Prerequisites
 
-1. A paid **NextDNS** account (https://nextdns.io)
+1. A **NextDNS** account (https://nextdns.io)
+   - **Free tier**: 300,000 queries/month, limited analytics
+   - **Pro tier** ($19.90/year): Unlimited queries, full features
+   - For a home DNS stack with multiple devices, the Pro tier is recommended
 2. Your NextDNS profile ID and dedicated IP endpoints
 
 ### Step 1: Get Your NextDNS Endpoints

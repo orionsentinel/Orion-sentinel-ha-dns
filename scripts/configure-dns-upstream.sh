@@ -70,14 +70,22 @@ validate_nextdns() {
         error_exit "NEXTDNS_ENABLED=true but NEXTDNS_DNS_IPV4 is not set"
     fi
     
-    # Basic IPv4 validation
+    # Basic IPv4 validation (four octets separated by dots)
     if ! [[ "${NEXTDNS_DNS_IPV4}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         error_exit "NEXTDNS_DNS_IPV4 '${NEXTDNS_DNS_IPV4}' is not a valid IPv4 address"
     fi
     
-    # Optional IPv6 validation
-    if [[ -n "${NEXTDNS_DNS_IPV6}" ]] && ! [[ "${NEXTDNS_DNS_IPV6}" =~ : ]]; then
-        error_exit "NEXTDNS_DNS_IPV6 '${NEXTDNS_DNS_IPV6}' is not a valid IPv6 address"
+    # Optional IPv6 validation (more robust pattern)
+    # Accepts standard IPv6 addresses like 2a07:a8c0::ab:cd12
+    if [[ -n "${NEXTDNS_DNS_IPV6}" ]]; then
+        # IPv6 must contain at least one colon and only valid hex chars/colons
+        if ! [[ "${NEXTDNS_DNS_IPV6}" =~ ^[0-9a-fA-F:]+$ ]] || \
+           ! [[ "${NEXTDNS_DNS_IPV6}" =~ : ]] || \
+           [[ "${NEXTDNS_DNS_IPV6}" =~ ^: ]] || \
+           [[ "${NEXTDNS_DNS_IPV6}" =~ :$ ]] || \
+           [[ "${NEXTDNS_DNS_IPV6}" =~ ::: ]]; then
+            error_exit "NEXTDNS_DNS_IPV6 '${NEXTDNS_DNS_IPV6}' is not a valid IPv6 address"
+        fi
     fi
 }
 
