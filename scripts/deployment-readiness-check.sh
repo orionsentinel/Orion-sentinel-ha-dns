@@ -58,8 +58,8 @@ echo ""
 echo "Checking documentation..."
 echo ""
 
-check_item "$(grep -q "CallMeBot" README.md && echo 0 || echo 1)" \
-    "README documents CallMeBot setup"
+check_item "$(grep -q "signal-cli-rest-api" README.md && echo 0 || echo 1)" \
+    "README documents Signal notification setup"
     
 check_item "$(test -f QA_TEST_RESULTS.md && echo 0 || echo 1)" \
     "QA test results document exists"
@@ -68,14 +68,11 @@ echo ""
 echo "Checking environment configuration..."
 echo ""
 
-check_item "$(grep -q "SIGNAL_API_KEY" .env.example && echo 0 || echo 1)" \
-    ".env.example has SIGNAL_API_KEY"
+check_item "$(grep -q "SIGNAL_NUMBER" .env.example && echo 0 || echo 1)" \
+    ".env.example has SIGNAL_NUMBER"
     
-check_item "$(grep -q "SIGNAL_PHONE_NUMBER" .env.example && echo 0 || echo 1)" \
-    ".env.example has SIGNAL_PHONE_NUMBER"
-    
-check_item "$(grep -q "callmebot" .env.example && echo 0 || echo 1)" \
-    ".env.example references CallMeBot"
+check_item "$(grep -q "SIGNAL_RECIPIENTS" .env.example && echo 0 || echo 1)" \
+    ".env.example has SIGNAL_RECIPIENTS"
 
 echo ""
 echo "Checking Python dependencies..."
@@ -102,9 +99,9 @@ if [ $CHECKS_FAILED -eq 0 ]; then
     echo ""
     echo "Next steps:"
     echo "1. Copy .env.example to .env"
-    echo "2. Get Signal API key from CallMeBot (+34 644 51 38 46)"
-    echo "3. Update .env with your SIGNAL_PHONE_NUMBER and SIGNAL_API_KEY"
-    echo "4. Deploy the stack: cd stacks/observability && docker compose up -d"
+    echo "2. Update .env with your SIGNAL_NUMBER and SIGNAL_RECIPIENTS"
+    echo "3. Deploy the stack: cd stacks/observability && docker compose up -d"
+    echo "4. Link Signal (one-time): docker exec -it signal-cli-rest-api signal-cli link -n 'RPi-DNS-Monitor'"
     echo "5. Test notification: curl -X POST http://192.168.8.250:8080/test -H 'Content-Type: application/json' -d '{\"message\":\"Test\"}'"
     echo ""
     exit 0

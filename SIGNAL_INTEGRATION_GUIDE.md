@@ -216,18 +216,6 @@ For full API documentation, visit:
 - Signal CLI REST API: https://bbernhard.github.io/signal-cli-rest-api/
 - Interactive API docs: http://192.168.8.250:8081/api-docs
 
-## Migration from CallMeBot
-
-If you were previously using CallMeBot, the migration is automatic. The new system:
-- ✅ Provides better reliability
-- ✅ Removes dependency on third-party service
-- ✅ Offers more features (groups, attachments, etc.)
-- ✅ Maintains end-to-end encryption
-- ✅ No API keys needed
-- ✅ No rate limits
-
-Simply follow the setup instructions above to complete the migration.
-
 ## Support
 
 For issues or questions:

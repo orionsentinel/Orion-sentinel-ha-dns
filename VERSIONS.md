@@ -1068,13 +1068,11 @@ Complete fix of all installation issues including Docker networking, environment
   /repo-root/stacks/ai-watchdog/.env -> ../../.env ✅
   ```
 
-#### 7. CallMeBot Dependency
-- **Before**: Required third-party CallMeBot with API keys
-- **After**: Self-hosted signal-cli-rest-api ✅
+#### 7. Signal Notifications
+- Self-hosted signal-cli-rest-api for notifications
+- No third-party service dependencies
 
-### Migration: CallMeBot → signal-cli-rest-api
-
-**New Setup:**
+**Setup:**
 1. Signal setup (one-time, 5 minutes):
    ```bash
    docker exec -it signal-api signal-cli link -n "RPi-DNS-Monitor"
@@ -1083,7 +1081,7 @@ Complete fix of all installation issues including Docker networking, environment
 3. Done! Self-hosted, no external dependencies
 
 **Configuration:**
-- Signal number in .env: `SIGNAL_SENDER`
+- Signal number in .env: `SIGNAL_NUMBER`
 - Recipients in .env: `SIGNAL_RECIPIENTS`
 - No API keys needed
 
