@@ -4,7 +4,7 @@
 November 15, 2025
 
 ## Integration Overview
-Integrated CallMeBot Signal API as a hosted webhook bridge for the RPi HA DNS Stack. This enables real-time Signal notifications for:
+Integrated self-hosted signal-cli-rest-api as the notification backend for the RPi HA DNS Stack. This enables real-time Signal notifications for:
 - Container failures and restarts (via AI-Watchdog)
 - Prometheus alerts (via Alertmanager)
 - Custom notifications via API
@@ -14,16 +14,16 @@ Integrated CallMeBot Signal API as a hosted webhook bridge for the RPi HA DNS St
 ### 1. Signal Webhook Bridge Service
 - **Location**: `stacks/observability/signal-webhook-bridge/`
 - **Components**:
-  - `app.py`: Flask application that receives webhooks from Alertmanager and forwards to CallMeBot Signal API
+  - `app.py`: Flask application that receives webhooks from Alertmanager and forwards to signal-cli-rest-api
   - `Dockerfile`: Container image for the bridge service
 - **Endpoints**:
   - `/health`: Health check endpoint
   - `/v1/send`: Receives Alertmanager webhooks and sends to Signal
   - `/test`: Test endpoint for sending test notifications
 - **Configuration**: Uses environment variables:
-  - `SIGNAL_WEBHOOK_URL`: CallMeBot API endpoint
-  - `SIGNAL_PHONE_NUMBER`: User's phone number
-  - `SIGNAL_API_KEY`: CallMeBot API key
+  - `SIGNAL_CLI_REST_API_URL`: URL to signal-cli-rest-api container
+  - `SIGNAL_NUMBER`: Sender's phone number registered with Signal
+  - `SIGNAL_RECIPIENTS`: Comma-separated list of recipient numbers
 
 ### 2. Updated Services
 
@@ -44,14 +44,13 @@ Integrated CallMeBot Signal API as a hosted webhook bridge for the RPi HA DNS St
 ### 3. Documentation Updates
 - Updated README.md with Signal setup instructions
 - Added service access URLs for new components
-- Documented CallMeBot registration process
+- Documented signal-cli-rest-api registration process
 - Added API testing examples
 
 ### 4. Environment Configuration
 - Updated `.env.example` with:
-  - `SIGNAL_WEBHOOK_URL`: Points to CallMeBot API
-  - `SIGNAL_PHONE_NUMBER`: Placeholder for user's number
-  - `SIGNAL_API_KEY`: Placeholder for user's API key
+  - `SIGNAL_NUMBER`: Sender's phone number
+  - `SIGNAL_RECIPIENTS`: Comma-separated list of recipients
 
 ## QA Test Results
 
@@ -76,7 +75,7 @@ Integrated CallMeBot Signal API as a hosted webhook bridge for the RPi HA DNS St
 ### Integration Points Verified
 1. ✅ Alertmanager → Signal Webhook Bridge connection configured
 2. ✅ AI-Watchdog → Signal Webhook Bridge connection configured
-3. ✅ Signal Webhook Bridge → CallMeBot API integration ready
+3. ✅ Signal Webhook Bridge → signal-cli-rest-api integration ready
 4. ✅ Health check endpoints implemented
 5. ✅ Error handling implemented in all services
 
@@ -102,8 +101,8 @@ Integrated CallMeBot Signal API as a hosted webhook bridge for the RPi HA DNS St
                     │  HTTP API Call
                     │
             ┌───────▼────────┐
-            │   CallMeBot    │
-            │   Signal API   │
+            │  signal-cli    │
+            │  -rest-api     │
             └───────┬────────┘
                     │
                     │  Signal Protocol
@@ -144,33 +143,32 @@ curl -X POST http://192.168.8.250:8080/test \
 
 ## Security Considerations
 
-1. ✅ API keys stored in environment variables (not in code)
-2. ✅ Credentials read from `.env` file (not committed to repo)
-3. ✅ Error handling prevents credential leakage in logs
-4. ✅ Health check endpoint does not expose sensitive data
-5. ✅ CallMeBot uses HTTPS for API communication
+1. ✅ Credentials read from `.env` file (not committed to repo)
+2. ✅ Error handling prevents credential leakage in logs
+3. ✅ Health check endpoint does not expose sensitive data
+4. ✅ Self-hosted solution with no third-party dependencies
+5. ✅ End-to-end encryption maintained via Signal protocol
 
 ## Known Limitations
 
-1. CallMeBot is a third-party service - depends on their uptime
+1. Signal registration requires one-time setup via signal-cli
 2. Message delivery depends on internet connectivity
-3. Rate limiting may apply based on CallMeBot's terms
-4. API key must be obtained manually by messaging CallMeBot on Signal
+3. Self-hosted signal-cli-rest-api requires local resources
 
 ## Setup Requirements for Users
 
 1. Users must have Signal installed on their phone
-2. Users must message CallMeBot to get their API key: 
-   - Send "I allow callmebot to send me messages" to +34 644 51 38 46
-3. Users must update `.env` with their credentials
-4. Network connectivity to api.callmebot.com required
+2. Users must link their Signal account to signal-cli-rest-api:
+   - Run: `docker exec -it signal-cli-rest-api signal-cli link -n "RPi-DNS-Monitor"`
+   - Scan QR code with Signal mobile app
+3. Users must update `.env` with their credentials (SIGNAL_NUMBER, SIGNAL_RECIPIENTS)
 
 ## Conclusion
 
 ✅ **All QA tests passed successfully**
 
 The Signal webhook bridge integration is complete and ready for deployment. The implementation:
-- Uses a hosted solution (CallMeBot) eliminating need for self-hosted Signal infrastructure
+- Uses self-hosted signal-cli-rest-api for full control and privacy
 - Properly integrates with existing Alertmanager and AI-Watchdog services
 - Includes comprehensive error handling and health checks
 - Is fully documented with setup instructions

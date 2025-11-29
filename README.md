@@ -424,7 +424,7 @@ Each deployment option includes complete docker-compose files, configurations, a
 - Gravity Sync for Pi-hole synchronization.
 - AI-Watchdog for self-healing with Signal notifications.
 - Prometheus + Grafana + Alertmanager + Loki for observability.
-- Signal webhook bridge for notifications via CallMeBot.
+- Signal webhook bridge for notifications via self-hosted signal-cli-rest-api.
 - **🆕 WireGuard VPN for secure remote access to home services.**
 - **🆕 Nginx Proxy Manager for exposing services with SSL support.**
 - **🆕 Single Sign-On (SSO) with Authelia for centralized authentication.**
