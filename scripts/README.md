@@ -4,9 +4,32 @@ This directory contains helper scripts for managing your RPi HA DNS Stack.
 
 ## Installation Methods
 
-The RPi HA DNS Stack offers **three different installation methods** to suit your preferences:
+The RPi HA DNS Stack offers **four different installation methods** to suit your preferences:
 
-### Method 1: Web-Based Setup UI (Recommended)
+### Method 1: Command Line Installer (NEW - Recommended for Automation)
+Full-featured CLI installer with both interactive and non-interactive modes.
+```bash
+# Interactive mode
+bash scripts/cli-install.sh
+
+# Non-interactive with options
+bash scripts/cli-install.sh --mode single-pi-ha --host-ip 192.168.1.100 --non-interactive
+
+# Dry-run to preview
+bash scripts/cli-install.sh --mode single-pi-ha --dry-run
+
+# Show full help
+bash scripts/cli-install.sh --help
+```
+- **Interactive and non-interactive modes**
+- **Full automation support** (CI/CD, scripting)
+- **All deployment modes** (single-pi-ha, two-pi-simple, two-pi-ha)
+- **Dry-run capability** to preview changes
+- **Comprehensive --help** documentation
+- Works over SSH and in headless environments
+- Ideal for power users and automation
+
+### Method 2: Web-Based Setup UI
 Interactive web interface accessible from any device on your network.
 ```bash
 bash scripts/launch-setup-ui.sh
@@ -16,7 +39,7 @@ bash scripts/launch-setup-ui.sh
 - Real-time validation and feedback
 - Perfect for beginners
 
-### Method 2: Desktop GUI Installer
+### Method 3: Desktop GUI Installer
 Native graphical installer for desktop Linux environments.
 ```bash
 bash scripts/install-gui.sh
@@ -26,7 +49,7 @@ bash scripts/install-gui.sh
 - Automatic browser launch
 - Best for desktop Linux users
 
-### Method 3: Terminal Setup
+### Method 4: Terminal Setup
 Command-line interactive setup for terminal enthusiasts.
 ```bash
 bash scripts/setup.sh
@@ -36,7 +59,7 @@ bash scripts/setup.sh
 - No GUI required
 - Ideal for headless systems
 
-All three methods provide the same configuration options and final result!
+All four methods provide the same configuration options and final result!
 
 ---
 
@@ -161,6 +184,70 @@ bash scripts/update.sh
 - For simple git pull + rebuild operations
 
 **Note**: For enhanced safety and features, use `smart-upgrade.sh` instead
+
+---
+
+### 🚀 cli-install.sh - Command Line Installer ⭐ NEW
+**Purpose**: Full-featured CLI installer with interactive and non-interactive modes
+
+**Usage**:
+```bash
+# Interactive installation (guided prompts)
+bash scripts/cli-install.sh
+
+# Non-interactive with specified options
+bash scripts/cli-install.sh --mode single-pi-ha --host-ip 192.168.1.100 --non-interactive
+
+# Dry-run to preview what would happen
+bash scripts/cli-install.sh --mode single-pi-ha --dry-run
+
+# Generate config file only (don't deploy)
+bash scripts/cli-install.sh --mode single-pi-ha --generate-config
+
+# Two-Pi HA mode for primary node
+bash scripts/cli-install.sh --mode two-pi-ha --node-role MASTER --host-ip 192.168.1.10
+
+# Show all options
+bash scripts/cli-install.sh --help
+```
+
+**Key Features**:
+- **Interactive mode**: Guided prompts for all configuration options
+- **Non-interactive mode**: Fully scriptable for automation
+- **Dry-run mode**: Preview changes without making any modifications
+- **All deployment modes**: single-pi-ha, two-pi-simple, two-pi-ha
+- **Complete CLI options**: IP addresses, passwords, network settings
+- **Generate config only**: Create .env without deploying
+- **Verbose mode**: Detailed output for debugging
+
+**Available Options**:
+| Option | Description |
+|--------|-------------|
+| `--mode <mode>` | Deployment mode (single-pi-ha, two-pi-simple, two-pi-ha) |
+| `--node-role <role>` | Node role for two-pi modes (MASTER, BACKUP) |
+| `--host-ip <ip>` | Host IP address |
+| `--vip <ip>` | Virtual IP address for HA |
+| `--interface <iface>` | Network interface (eth0, wlan0, etc.) |
+| `--subnet <cidr>` | Network subnet (e.g., 192.168.1.0/24) |
+| `--gateway <ip>` | Network gateway |
+| `--timezone <tz>` | Timezone (e.g., Europe/London) |
+| `--pihole-password <pw>` | Pi-hole admin password |
+| `--grafana-password <pw>` | Grafana admin password |
+| `--vrrp-password <pw>` | VRRP/Keepalived password |
+| `--non-interactive` | Run without prompts |
+| `--generate-config` | Generate .env only, don't deploy |
+| `--dry-run` | Preview changes without applying |
+| `--skip-docker` | Skip Docker installation check |
+| `--skip-validation` | Skip prerequisite checks |
+| `--force` | Continue even if checks fail |
+| `--verbose` | Enable detailed output |
+
+**When to use**:
+- Automated deployments (CI/CD pipelines)
+- Scripted installation across multiple Pis
+- Headless/SSH installations
+- Power users who prefer CLI
+- Testing with dry-run before deployment
 
 ---
 
