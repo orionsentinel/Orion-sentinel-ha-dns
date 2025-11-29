@@ -77,6 +77,7 @@ These guides walk you through:
 - **[🛡️ Security Profiles](docs/profiles.md)** - DNS filtering configurations
 - **[💾 Backup & Migration](docs/backup-and-migration.md)** - Disaster recovery
 - **[📊 Observability Guide](docs/observability.md)** - Monitoring and metrics
+- **[🌐 NextDNS Integration](docs/nextdns-integration.md)** - Cloud DNS with local fallback ⭐ NEW
 
 ### 🔗 Orion Sentinel Integration
 - **[🛡️ NSM/AI Integration Guide](docs/ORION_SENTINEL_INTEGRATION.md)** - Connect with Network Security Monitoring & AI ⭐ NEW
@@ -118,6 +119,7 @@ This repository is the **DNS & Privacy layer** of the Orion Sentinel platform:
 - 🏥 **Health Checking**: Comprehensive service health validation ⭐ NEW
 - 🛡️ **Security Profiles**: Pre-configured DNS filtering levels ⭐ NEW
 - 💾 **Backup & Restore**: Automated configuration backups ⭐ NEW
+- 🌐 **NextDNS Integration**: Optional cloud DNS with local fallback ⭐ NEW
 
 **Integration with NSM/AI Pi:**
 - Exposes DNS logs for security analysis
@@ -125,6 +127,38 @@ This repository is the **DNS & Privacy layer** of the Orion Sentinel platform:
 - Shared observability stack (optional)
 
 See [docs/ORION_SENTINEL_INTEGRATION.md](docs/ORION_SENTINEL_INTEGRATION.md) for integration details.
+
+---
+
+## 🌐 NextDNS Integration (Optional)
+
+The stack supports **NextDNS** as an optional upstream resolver, providing cloud-based DNS filtering while maintaining local Unbound as a fallback.
+
+### Configuration Options
+
+| Mode | Primary Node | Secondary Node |
+|------|--------------|----------------|
+| **Unbound-only** (default) | Local Unbound | Local Unbound |
+| **NextDNS** | NextDNS only | NextDNS + Unbound fallback |
+| **NextDNS (no fallback)** | NextDNS only | NextDNS only |
+
+### Quick Setup
+
+```bash
+# 1. Edit your .env file
+NEXTDNS_ENABLED=true
+NEXTDNS_DNS_IPV4=45.90.28.xxx  # Your NextDNS endpoint
+UNBOUND_FALLBACK_SECONDARY=true  # Keep Unbound fallback
+
+# 2. Generate DNS configuration
+source <(./scripts/configure-dns-upstream.sh)
+
+# 3. Deploy
+cd stacks/dns
+docker compose --profile <your-profile> up -d
+```
+
+📖 **[NextDNS Integration Guide](docs/nextdns-integration.md)** - Complete NextDNS setup and configuration
 
 ---
 

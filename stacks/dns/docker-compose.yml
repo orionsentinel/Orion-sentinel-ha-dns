@@ -21,6 +21,25 @@
 # - two-pi-ha-pi1: Primary services + Keepalived on Pi1
 # - two-pi-ha-pi2: Secondary services + Keepalived on Pi2
 #
+# DNS Upstream Configuration:
+# ===========================
+# The upstream DNS resolver can be configured via environment variables:
+#
+# Option 1: Unbound-only mode (default, original behavior)
+#   - Set NEXTDNS_ENABLED=false or leave unset
+#   - Both Pi-hole instances use local Unbound for full recursive DNS
+#   - PIHOLE_DNS_PRIMARY and PIHOLE_DNS_SECONDARY control upstreams
+#
+# Option 2: NextDNS mode (requires paid NextDNS account)
+#   - Set NEXTDNS_ENABLED=true
+#   - Set NEXTDNS_DNS_IPV4 (and optionally NEXTDNS_DNS_IPV6)
+#   - Primary node: Uses NextDNS only, Unbound is not started
+#   - Secondary node: Uses NextDNS as primary, Unbound as fallback
+#   - Set UNBOUND_FALLBACK_SECONDARY=false to use NextDNS only on secondary
+#
+# To revert to Unbound-only mode quickly:
+#   - Set UNBOUND_ONLY_MODE=true (overrides NEXTDNS_ENABLED)
+#
 # Common configuration anchors for reusability
 x-pihole-common: &pihole-common
   image: pihole/pihole:latest
@@ -62,6 +81,13 @@ x-unbound-common: &unbound-common
         memory: 64M
 
 services:
+  # =====================================================
+  # Pi-hole Primary Service
+  # =====================================================
+  # DNS upstream behavior:
+  # - Default (NEXTDNS_ENABLED=false): Uses PIHOLE_DNS_PRIMARY (Unbound)
+  # - NextDNS mode (NEXTDNS_ENABLED=true): Uses NEXTDNS_DNS_IPV4/IPV6
+  # - UNBOUND_ONLY_MODE=true overrides NextDNS to use Unbound
   pihole_primary:
     <<: *pihole-common
     container_name: pihole_primary
@@ -73,15 +99,27 @@ services:
     environment:
       - TZ=${TZ:-Europe/London}
       - WEBPASSWORD=${PIHOLE_PASSWORD}
+      # DNS upstream configuration:
+      # When NEXTDNS_ENABLED=true and UNBOUND_ONLY_MODE!=true:
+      #   Uses NEXTDNS_DNS_IPV4 as primary upstream
+      # Otherwise: Uses PIHOLE_DNS_PRIMARY (defaults to unbound_primary#5335)
       - PIHOLE_DNS_=${PIHOLE_DNS_PRIMARY:-unbound_primary#5335}
     networks:
       - dns_net
     volumes:
       - ./pihole1/etc-pihole:/etc/pihole
       - ./pihole1/etc-dnsmasq.d:/etc/dnsmasq.d
-    depends_on:
-      - unbound_primary
+    # Note: depends_on for unbound_primary is removed when using NextDNS mode
+    # The dependency is managed by profiles (see unbound-primary-nextdns profile)
 
+  # =====================================================
+  # Pi-hole Secondary Service
+  # =====================================================
+  # DNS upstream behavior:
+  # - Default (NEXTDNS_ENABLED=false): Uses PIHOLE_DNS_SECONDARY (Unbound)
+  # - NextDNS mode with fallback (UNBOUND_FALLBACK_SECONDARY=true):
+  #     Uses NEXTDNS_DNS_IPV4 as primary, Unbound as secondary
+  # - NextDNS mode without fallback: Uses NEXTDNS_DNS_IPV4 only
   pihole_secondary:
     <<: *pihole-common
     container_name: pihole_secondary
@@ -92,15 +130,28 @@ services:
     environment:
       - TZ=${TZ:-Europe/London}
       - WEBPASSWORD=${PIHOLE_PASSWORD}
+      # DNS upstream configuration:
+      # When NEXTDNS_ENABLED=true and UNBOUND_FALLBACK_SECONDARY=true:
+      #   Uses NEXTDNS_DNS_IPV4 as primary, unbound_secondary#5335 as fallback
+      # When NEXTDNS_ENABLED=true and UNBOUND_FALLBACK_SECONDARY=false:
+      #   Uses NEXTDNS_DNS_IPV4 only (no Unbound fallback)
+      # Otherwise: Uses PIHOLE_DNS_SECONDARY (defaults to unbound_secondary#5335)
       - PIHOLE_DNS_=${PIHOLE_DNS_SECONDARY:-unbound_secondary#5335}
     networks:
       - dns_net
     volumes:
       - ./pihole2/etc-pihole:/etc/pihole
       - ./pihole2/etc-dnsmasq.d:/etc/dnsmasq.d
-    depends_on:
-      - unbound_secondary
+    # Note: depends_on for unbound_secondary remains in all modes
+    # Secondary always has Unbound available as fallback
 
+  # =====================================================
+  # Unbound Primary Service
+  # =====================================================
+  # Availability by mode:
+  # - Unbound-only mode: Always running (used as primary DNS upstream)
+  # - NextDNS mode on primary node: Not used (can be disabled via profile)
+  # - NextDNS mode on secondary node: Running as fallback
   unbound_primary:
     <<: *unbound-common
     container_name: unbound_primary
@@ -109,12 +160,21 @@ services:
       - single-pi-ha
       - two-pi-simple
       - two-pi-ha-pi1
+      # When using NextDNS on primary, Unbound is optional
+      # Use 'unbound-primary-optional' profile to include it anyway
+      - unbound-primary-optional
     networks:
       - dns_net
     volumes:
       - ./unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
       - unbound_primary_run:/run
 
+  # =====================================================
+  # Unbound Secondary Service
+  # =====================================================
+  # Availability by mode:
+  # - Unbound-only mode: Always running (used as primary DNS upstream)
+  # - NextDNS mode: Running as fallback when UNBOUND_FALLBACK_SECONDARY=true
   unbound_secondary:
     <<: *unbound-common
     container_name: unbound_secondary
