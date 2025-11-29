@@ -198,11 +198,11 @@ check_os() {
                 ;;
         esac
         
-        # Check OS distribution
+        # Check OS distribution - use grep to extract specific fields safely
         if [ -f /etc/os-release ]; then
-            # shellcheck disable=SC1091
-            source /etc/os-release
-            log_info "Distribution: $PRETTY_NAME"
+            local pretty_name
+            pretty_name=$(grep "^PRETTY_NAME=" /etc/os-release 2>/dev/null | cut -d'"' -f2 || echo "Unknown")
+            log_info "Distribution: $pretty_name"
         fi
     else
         log_fail "This script requires Linux"
@@ -292,12 +292,22 @@ check_docker() {
         fi
     else
         if [ "$FIX_ISSUES" = "true" ]; then
-            log_info "Installing Docker..."
-            curl -fsSL https://get.docker.com | sudo sh 2>/dev/null && \
-                log_pass "Docker installed successfully" || \
-                log_fail "Docker is not installed" "Run: curl -fsSL https://get.docker.com | sh"
+            log_info "Installing Docker via package manager..."
+            # Prefer package manager installation over piping script to shell
+            if command -v apt-get &> /dev/null; then
+                sudo apt-get update -qq && \
+                sudo apt-get install -y docker.io docker-compose-plugin 2>/dev/null && \
+                    log_pass "Docker installed via apt" || \
+                    log_fail "Docker installation failed" "Try: curl -fsSL https://get.docker.com | sh"
+            elif command -v dnf &> /dev/null; then
+                sudo dnf install -y docker docker-compose-plugin 2>/dev/null && \
+                    log_pass "Docker installed via dnf" || \
+                    log_fail "Docker installation failed"
+            else
+                log_warn "Package manager not detected" "Install Docker manually: https://docs.docker.com/get-docker/"
+            fi
         else
-            log_fail "Docker is not installed" "Run: curl -fsSL https://get.docker.com | sh"
+            log_fail "Docker is not installed" "Install via: sudo apt-get install docker.io docker-compose-plugin"
         fi
     fi
     

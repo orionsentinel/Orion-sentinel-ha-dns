@@ -77,9 +77,23 @@ init_state() {
     done
     
     # Load persisted state if exists
-    if [ -f "$STATE_FILE" ]; then
+    if [ -f "$STATE_FILE" ] && command -v jq &> /dev/null; then
         log_debug "Loading persisted state from $STATE_FILE"
-        # In a production system, you'd parse the JSON here
+        # Parse JSON state file using jq for each monitored service
+        for service in "${MONITORED_SERVICES[@]}"; do
+            local failures last_restart circuit_state
+            failures=$(jq -r ".services.\"$service\".failures // 0" "$STATE_FILE" 2>/dev/null)
+            last_restart=$(jq -r ".services.\"$service\".last_restart // 0" "$STATE_FILE" 2>/dev/null)
+            circuit_state=$(jq -r ".services.\"$service\".circuit_breaker // \"closed\"" "$STATE_FILE" 2>/dev/null)
+            
+            # Only update if we got valid values
+            [[ "$failures" =~ ^[0-9]+$ ]] && SERVICE_FAILURES[$service]=$failures
+            [[ "$last_restart" =~ ^[0-9]+$ ]] && SERVICE_LAST_RESTART[$service]=$last_restart
+            [[ "$circuit_state" =~ ^(closed|open|half-open)$ ]] && CIRCUIT_BREAKER_STATE[$service]=$circuit_state
+        done
+        log_debug "State loaded successfully"
+    elif [ -f "$STATE_FILE" ]; then
+        log_debug "jq not available, skipping state load (state will be reset)"
     fi
 }
 
@@ -184,6 +198,8 @@ send_notification() {
     # Send Signal notification if enabled
     if [ "$NOTIFICATION_SIGNAL" = "true" ]; then
         local signal_api="${SIGNAL_API_URL:-http://localhost:8080}"
+        local signal_number="${SIGNAL_NUMBER:-}"
+        local signal_recipients="${SIGNAL_RECIPIENTS:-}"
         local emoji=""
         case "$severity" in
             critical) emoji="🚨" ;;
@@ -192,10 +208,19 @@ send_notification() {
             recovery) emoji="✅" ;;
         esac
         
-        curl -s -X POST "$signal_api/test" \
-            -H "Content-Type: application/json" \
-            -d "{\"message\": \"$emoji [$severity] $message\"}" \
-            > /dev/null 2>&1 || log_warn "Failed to send Signal notification"
+        # Use v2 API endpoint for sending messages if number is configured
+        if [ -n "$signal_number" ] && [ -n "$signal_recipients" ]; then
+            curl -s -X POST "${signal_api}/v2/send" \
+                -H "Content-Type: application/json" \
+                -d "{\"message\": \"$emoji [$severity] $message\", \"number\": \"$signal_number\", \"recipients\": [\"$signal_recipients\"]}" \
+                > /dev/null 2>&1 || log_warn "Failed to send Signal notification"
+        else
+            # Fallback to webhook bridge endpoint
+            curl -s -X POST "${signal_api}/webhook" \
+                -H "Content-Type: application/json" \
+                -d "{\"message\": \"$emoji [$severity] $message\"}" \
+                > /dev/null 2>&1 || log_warn "Failed to send Signal notification"
+        fi
     fi
 }
 

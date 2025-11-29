@@ -323,10 +323,27 @@ sync_pihole_data() {
             local remote_container="pihole_secondary"
             [ "$NODE_ROLE" = "secondary" ] && remote_container="pihole_primary"
             
+            # Break the import into separate steps for better error handling
+            log "Importing Pi-hole configuration on peer..."
+            
+            # Step 1: Extract the backup
+            if ! ssh -q -o BatchMode=yes -i "$SSH_KEY" -p "$SSH_PORT" \
+                "${SSH_USER}@${PEER_IP}" \
+                "docker exec $remote_container sh -c 'cd / && tar xzf /tmp/pihole-export.tar.gz'" 2>/dev/null; then
+                warn "Failed to extract Pi-hole backup on peer"
+            fi
+            
+            # Step 2: Clean up the temp file
             ssh -q -o BatchMode=yes -i "$SSH_KEY" -p "$SSH_PORT" \
                 "${SSH_USER}@${PEER_IP}" \
-                "docker exec $remote_container sh -c 'cd / && tar xzf - < /tmp/pihole-export.tar.gz' && rm /tmp/pihole-export.tar.gz && docker exec $remote_container pihole restartdns reload-lists" 2>/dev/null || \
-                warn "Failed to import Pi-hole configuration on peer"
+                "rm -f /tmp/pihole-export.tar.gz" 2>/dev/null || true
+            
+            # Step 3: Reload Pi-hole DNS lists
+            if ! ssh -q -o BatchMode=yes -i "$SSH_KEY" -p "$SSH_PORT" \
+                "${SSH_USER}@${PEER_IP}" \
+                "docker exec $remote_container pihole restartdns reload-lists" 2>/dev/null; then
+                warn "Failed to reload Pi-hole DNS lists on peer"
+            fi
             
             log "Pi-hole configuration pushed to peer"
         fi

@@ -245,9 +245,17 @@ create_backup() {
         local container="pihole_${instance}"
         if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${container}$"; then
             info "Backing up Pi-hole $instance..."
-            docker exec "$container" tar czf - /etc/pihole /etc/dnsmasq.d 2>/dev/null > \
-                "$backup_temp/pihole/${instance}-config.tar.gz" || \
-                warn "Could not backup $container config"
+            local backup_output
+            backup_output=$(docker exec "$container" tar czf - /etc/pihole /etc/dnsmasq.d 2>&1 > \
+                "$backup_temp/pihole/${instance}-config.tar.gz")
+            local exit_code=$?
+            if [ $exit_code -ne 0 ]; then
+                warn "Could not backup $container config: $backup_output"
+            else
+                log "Pi-hole $instance backup completed"
+            fi
+        else
+            info "Container $container not running, skipping backup"
         fi
     done
     

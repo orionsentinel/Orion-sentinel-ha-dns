@@ -37,8 +37,10 @@ services:
     volumes:
       # Mount Docker socket for container operations
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Mount SSH keys for remote access
-      - ${SSH_KEY_PATH:-~/.ssh}:/root/.ssh:ro
+      # Mount specific SSH key for sync operations (principle of least privilege)
+      # Create a dedicated sync key: ssh-keygen -t ed25519 -f ~/.ssh/sync_key -N ""
+      - ${SYNC_SSH_KEY:-~/.ssh/id_rsa}:/root/.ssh/id_rsa:ro
+      - ${SYNC_SSH_KEY:-~/.ssh/id_rsa}.pub:/root/.ssh/id_rsa.pub:ro
       # Mount sync script and configuration
       - ./multi-node-sync.sh:/app/multi-node-sync.sh:ro
       - ${REPO_ROOT:-.}/.env:/app/.env:ro
