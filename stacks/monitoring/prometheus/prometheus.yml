@@ -1,5 +1,7 @@
 # Prometheus Configuration for DNS HA Stack
 # Scrapes metrics from Pi-hole, Unbound, and system exporters
+#
+# DNS Flow: Clients → VIP (Keepalived) → Pi-hole → Unbound → NextDNS over DoT
 
 global:
   scrape_interval: 15s
@@ -70,19 +72,65 @@ scrape_configs:
           unbound_ip: '192.168.8.254'
 
   # Blackbox Exporter - DNS latency probes
+  # NOTE: Update target IPs to match your deployment configuration
   - job_name: 'blackbox-dns'
     metrics_path: /probe
     params:
       module: [dns_google]
     static_configs:
       - targets:
-          - '192.168.8.255'  # VIP
+          - '192.168.8.249'  # VIP - update to match DNS_VIP in .env
           - '192.168.8.251'  # Primary Pi-hole
           - '192.168.8.252'  # Secondary Pi-hole
           - '192.168.8.253'  # Primary Unbound
           - '192.168.8.254'  # Secondary Unbound
         labels:
           probe_type: 'dns'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # DNS VIP Probe - Dedicated job for VIP availability monitoring
+  # This is the critical probe for HA - verifies the floating VIP is responding
+  # NOTE: Update the target IP to match your DNS_VIP from .env
+  - job_name: 'dns_vip_probe'
+    metrics_path: /probe
+    params:
+      module: [dns_google]
+    static_configs:
+      - targets:
+          - '192.168.8.249:53'  # DNS VIP (Keepalived) - update to match DNS_VIP in .env
+        labels:
+          probe_type: 'dns_vip'
+          role: 'vip'
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.+):.*'
+        target_label: __param_target
+        replacement: '${1}'
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # NextDNS DoT Health Probe - Verifies upstream DoT connectivity
+  # Checks TLS connection to NextDNS on port 853
+  # NOTE: Update targets to match your NEXTDNS_IPV4 from .env if using profile-specific endpoints
+  - job_name: 'nextdns_dot_probe'
+    metrics_path: /probe
+    params:
+      module: [tls_nextdns]
+    static_configs:
+      - targets:
+          - '45.90.28.0:853'   # NextDNS Anycast IPv4 primary - or use your profile-specific IP
+          - '45.90.30.0:853'   # NextDNS Anycast IPv4 secondary - or use your profile-specific IP
+        labels:
+          probe_type: 'tls'
+          upstream: 'nextdns'
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
