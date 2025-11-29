@@ -744,9 +744,38 @@ Both validation scripts must pass before deployment to ensure:
 
 ### Alternative: Terminal-Based Setup
 
-#### 🆕 Option 1: Easy Installer (Recommended) ✨
+#### 🆕 Option 1: CLI Installer (NEW - Recommended for Power Users) ✨
 
-**NEW:** Robust installer with proper error handling and recovery!
+**NEW:** Full-featured command-line installer with interactive and non-interactive modes!
+
+```bash
+git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
+cd rpi-ha-dns-stack
+
+# Interactive mode (guided prompts)
+bash scripts/cli-install.sh
+
+# Non-interactive mode (for automation)
+bash scripts/cli-install.sh --mode single-pi-ha --host-ip 192.168.1.100 --non-interactive
+
+# Dry-run to preview changes
+bash scripts/cli-install.sh --mode single-pi-ha --dry-run
+
+# See all options
+bash scripts/cli-install.sh --help
+```
+
+Features:
+- ✅ Interactive AND non-interactive modes
+- ✅ All deployment modes (single-pi-ha, two-pi-simple, two-pi-ha)
+- ✅ Dry-run capability to preview changes
+- ✅ Full automation support for CI/CD
+- ✅ Comprehensive --help documentation
+- ✅ Generate config only with `--generate-config`
+
+#### Option 2: Easy Installer
+
+Robust installer with proper error handling and recovery:
 
 ```bash
 git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
@@ -762,7 +791,7 @@ Features:
 - ✅ Verbose mode for debugging: `bash scripts/easy-install.sh --verbose`
 - ✅ Help available: `bash scripts/easy-install.sh --help`
 
-#### Option 2: Interactive Terminal Wizard
+#### Option 3: Interactive Terminal Wizard
 
 If you prefer a terminal-based interactive wizard:
 ```bash
@@ -771,7 +800,7 @@ cd rpi-ha-dns-stack
 bash scripts/interactive-setup.sh
 ```
 
-#### Option 3: Guided Terminal Setup
+#### Option 4: Guided Terminal Setup
 
 For a simpler guided terminal setup:
 ```bash
@@ -780,7 +809,7 @@ cd rpi-ha-dns-stack
 bash scripts/setup.sh
 ```
 
-#### Option 3: Manual Setup
+#### Option 5: Manual Setup
 1. Clone the repository:
    ```bash
    git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
