@@ -78,6 +78,13 @@ These guides walk you through:
 - **[💾 Backup & Migration](docs/backup-and-migration.md)** - Disaster recovery
 - **[📊 Observability Guide](docs/observability.md)** - Monitoring and metrics
 
+### Phase 3 Features (Resilience & Automation) 🆕
+- **[🔗 Stack Integration Guide](docs/STACK_INTEGRATION.md)** - Multi-node sync, backup automation, and self-healing 🆕
+- **[🔄 Multi-Node Sync](scripts/multi-node-sync.sh)** - Automated configuration sync between nodes 🆕
+- **[💾 Automated Sync Backup](scripts/automated-sync-backup.sh)** - Backup with off-site replication 🆕
+- **[🔧 Self-Healing Service](scripts/self-heal.sh)** - Automatic failure detection and recovery 🆕
+- **[✅ Pre-Flight Check](scripts/pre-flight-check.sh)** - System validation before deployment 🆕
+
 ### 🔗 Orion Sentinel Integration
 - **[🛡️ NSM/AI Integration Guide](docs/ORION_SENTINEL_INTEGRATION.md)** - Connect with Network Security Monitoring & AI ⭐ NEW
 - **[🏗️ Orion Sentinel Architecture](docs/ORION_SENTINEL_ARCHITECTURE.md)** - Complete two-Pi ecosystem overview ⭐ NEW
@@ -118,6 +125,9 @@ This repository is the **DNS & Privacy layer** of the Orion Sentinel platform:
 - 🏥 **Health Checking**: Comprehensive service health validation ⭐ NEW
 - 🛡️ **Security Profiles**: Pre-configured DNS filtering levels ⭐ NEW
 - 💾 **Backup & Restore**: Automated configuration backups ⭐ NEW
+- 🔗 **Multi-Node Sync**: Automatic configuration sync between nodes 🆕
+- 🔧 **Self-Healing**: Automatic failure detection and recovery 🆕
+- 📤 **Off-Site Backup**: Remote backup to NAS/cloud storage 🆕
 
 **Integration with NSM/AI Pi:**
 - Exposes DNS logs for security analysis
@@ -342,6 +352,34 @@ docker compose -f stacks/agents/dns-log-agent/docker-compose.yml up -d
 
 📖 **[NSM/AI Integration](docs/ORION_SENTINEL_INTEGRATION.md)** - Security Pi integration details
 
+### 🔗 Multi-Node Sync & Automation (Phase 3) 🆕
+
+Automated synchronization and self-healing for multi-node deployments:
+
+- **Configuration Sync**: Automatic Pi-hole, Unbound, and profile sync between nodes
+- **Backup Replication**: Local backups with automatic replication to peer and off-site storage
+- **Self-Healing**: Circuit breaker pattern with automatic failure recovery
+- **Pre-Flight Validation**: Comprehensive system checks before deployment
+
+```bash
+# Setup multi-node sync
+bash scripts/multi-node-sync.sh --setup
+
+# Run sync daemon
+bash scripts/multi-node-sync.sh --daemon &
+
+# Run self-healing service
+bash scripts/self-heal.sh --daemon &
+
+# Pre-flight check before deployment
+bash scripts/pre-flight-check.sh --fix
+
+# Automated backup with sync
+bash scripts/automated-sync-backup.sh --all
+```
+
+📖 **[Stack Integration Guide](docs/STACK_INTEGRATION.md)** - Complete multi-node setup and automation
+
 ---
 
 ## 🆕 Choose Your Deployment Option!
@@ -561,6 +599,11 @@ This repository provides **three complete deployment configurations**:
 - Automated sync of DNS records with Gravity Sync.
 - Self-healing through AI-Watchdog.
 - **🆕 Multi-node deployment for true hardware redundancy.**
+- **🆕 Automated multi-node configuration sync** - Keep primary and secondary in sync automatically.
+- **🆕 Off-site backup replication** - Backup to peer nodes, NAS, and cloud storage.
+- **🆕 Circuit breaker pattern** - Prevent cascading failures with intelligent retry logic.
+- **🆕 Pre-flight validation** - Comprehensive system checks before deployment.
+- **🆕 Self-healing service** - Automatic detection and recovery from failures.
 
 ## 🔧 Operational Excellence
 
