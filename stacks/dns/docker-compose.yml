@@ -76,6 +76,12 @@ services:
       - PIHOLE_DNS_=${PIHOLE_DNS_PRIMARY:-unbound_primary#5335}
     networks:
       - dns_net
+    # Expose DNS ports on host for LAN clients
+    # For two-pi-ha, clients reach DNS via VIP which routes to this host
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "80:80/tcp"
     volumes:
       - ./pihole1/etc-pihole:/etc/pihole
       - ./pihole1/etc-dnsmasq.d:/etc/dnsmasq.d
@@ -95,6 +101,12 @@ services:
       - PIHOLE_DNS_=${PIHOLE_DNS_SECONDARY:-unbound_secondary#5335}
     networks:
       - dns_net
+    # Expose DNS ports on host for LAN clients
+    # For two-pi-ha, clients reach DNS via VIP which routes to this host
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "80:80/tcp"
     volumes:
       - ./pihole2/etc-pihole:/etc/pihole
       - ./pihole2/etc-dnsmasq.d:/etc/dnsmasq.d
@@ -142,10 +154,30 @@ services:
       - NET_BROADCAST
       - NET_RAW
     volumes:
-      - ./keepalived:/etc/keepalived:ro
+      # Mount Docker socket for health check script to verify containers
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
     environment:
       - KEEPALIVED_ENABLED=${KEEPALIVED_ENABLED:-true}
+      # Required for VIP management
+      - VIP_ADDRESS=${VIP_ADDRESS}
+      - HOST_IP=${HOST_IP}
+      - VRRP_PASSWORD=${VRRP_PASSWORD}
+      # Network configuration
+      - NETWORK_INTERFACE=${NETWORK_INTERFACE:-eth0}
+      - VIRTUAL_ROUTER_ID=${VIRTUAL_ROUTER_ID:-51}
+      - KEEPALIVED_PRIORITY=${KEEPALIVED_PRIORITY:-100}
+      - SUBNET=${SUBNET:-}
+      # Peer IPs for unicast VRRP
+      - PI1_IP=${PI1_IP:-}
+      - PI2_IP=${PI2_IP:-}
+      - NODE_ROLE=${NODE_ROLE:-}
+      - PI1_HOSTNAME=${PI1_HOSTNAME:-}
+      - PI2_HOSTNAME=${PI2_HOSTNAME:-}
+      # Signal notifications
+      - SIGNAL_NUMBER=${SIGNAL_NUMBER:-}
+      - NOTIFY_ON_FAILOVER=${NOTIFY_ON_FAILOVER:-true}
+      - NOTIFY_ON_FAILBACK=${NOTIFY_ON_FAILBACK:-true}
     healthcheck:
       test: ["CMD", "pgrep", "keepalived"]
       interval: 30s

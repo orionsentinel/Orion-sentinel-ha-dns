@@ -10,9 +10,45 @@
 #
 # Docker Compose will automatically merge docker-compose.yml with docker-compose.override.yml
 
-version: '3.8'
-
 services:
+  # =================================================================
+  # KEEPALIVED CONFIGURATION (Two-Pi HA Mode)
+  # =================================================================
+  # 
+  # By default, keepalived uses the entrypoint.sh script to dynamically
+  # generate its configuration from environment variables. This works
+  # well when you set the proper .env values.
+  #
+  # However, if you prefer to use a static configuration file (for example,
+  # a known-good config that you've tested), you can mount it directly.
+  #
+  # Example for Pi1 (MASTER):
+  # Uncomment and adjust the path to your keepalived config file.
+  #
+  # keepalived:
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     # Mount your custom keepalived config (overrides dynamic generation)
+  #     - ../../profiles/keepalived/two-pi-ha/keepalived.pi1.conf:/etc/keepalived/keepalived.conf:ro
+  #   # Skip the entrypoint and run keepalived directly with your static config
+  #   entrypoint: ["keepalived", "--dont-fork", "--log-console", "--log-detail"]
+  #
+  # Example for Pi2 (BACKUP):
+  # keepalived:
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - ../../profiles/keepalived/two-pi-ha/keepalived.pi2.conf:/etc/keepalived/keepalived.conf:ro
+  #   entrypoint: ["keepalived", "--dont-fork", "--log-console", "--log-detail"]
+  #
+  # NOTE: When using a static config, remember to:
+  # 1. Replace <VRRP_PASSWORD> with your actual password
+  # 2. Update IP addresses to match your network
+  # 3. Ensure the config is valid keepalived syntax
+
+  # =================================================================
+  # PI-HOLE CUSTOMIZATION
+  # =================================================================
+  
   # Example: Change Pi-hole timezone
   # pihole_primary:
   #   environment:

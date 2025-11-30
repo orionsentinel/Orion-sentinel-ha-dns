@@ -6,6 +6,45 @@ This guide walks you through installing Orion DNS HA on two Raspberry Pis with f
 
 ---
 
+## Quick Start (TL;DR)
+
+For experienced users, here's the quick setup:
+
+```bash
+# On BOTH Pis:
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
+cd Orion-sentinel-ha-dns
+
+# Copy the two-pi-ha environment template
+cp env/.env.two-pi-ha.example .env
+
+# Edit .env - set these values (same on both, EXCEPT HOST_IP and KEEPALIVED_PRIORITY):
+#   PI1_IP=192.168.8.250
+#   PI2_IP=192.168.8.251
+#   VIP_ADDRESS=192.168.8.249
+#   HOST_IP=<this Pi's IP>         # 192.168.8.250 on Pi1, 192.168.8.251 on Pi2
+#   KEEPALIVED_PRIORITY=<priority> # 100 on Pi1 (MASTER), 90 on Pi2 (BACKUP)
+#   VRRP_PASSWORD=<secure password>
+#   PIHOLE_PASSWORD=<secure password>
+#   Generate passwords with: openssl rand -base64 32
+
+# Validate configuration
+bash scripts/validate-env.sh
+bash scripts/test-env-format.sh
+
+# Deploy on Pi1:
+cd stacks/dns && docker compose --profile two-pi-ha-pi1 up -d
+
+# Deploy on Pi2:
+cd stacks/dns && docker compose --profile two-pi-ha-pi2 up -d
+
+# Verify (on both):
+bash scripts/vip-health.sh
+dig +short example.com @${VIP_ADDRESS}
+```
+
+---
+
 ## Overview
 
 A two-Pi HA deployment provides:
@@ -61,7 +100,7 @@ You need to set up both Pis. The process is similar but with different node role
 
 ```bash
 # On Pi #1
-git clone https://github.com/yorgosroussakis/Orion-sentinel-ha-dns.git
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
 cd Orion-sentinel-ha-dns
 ```
 
@@ -79,79 +118,96 @@ This will:
 
 ### 3. Configure .env for MASTER
 
-**Option A: Use Web Wizard (Easier)**
+**Option A: Use the two-pi-ha template (Recommended)**
 
 ```bash
-# Start the wizard
-docker compose -f stacks/dns/docker-compose.yml up -d dns-wizard
-
-# Access at http://192.168.1.100:8080
-
-# In the wizard:
-# - Select "High Availability (HA)" mode
-# - Pi IP: 192.168.1.100
-# - VIP: 192.168.1.200
-# - Node Role: MASTER
-# - Interface: eth0
-# - Set Pi-hole password
-```
-
-**Option B: Manual Configuration**
-
-```bash
-cp .env.example .env
+# Copy the two-pi-ha template
+cp env/.env.two-pi-ha.example .env
 nano .env
 ```
 
-Edit the following values:
+Edit the following values for Pi1:
 
 ```bash
-# Pi #1 configuration
-HOST_IP=192.168.1.100
+# Network configuration
+SUBNET=192.168.8.0/24
+GATEWAY=192.168.8.1
 NETWORK_INTERFACE=eth0
 
-# Virtual IP (shared between both Pis)
-DNS_VIP=192.168.1.200
-VIP_ADDRESS=192.168.1.200
+# IP addresses
+PI1_IP=192.168.8.250
+PI2_IP=192.168.8.251
+VIP_ADDRESS=192.168.8.249
 
-# Node role
-NODE_ROLE=MASTER
+# This Pi's specific settings (DIFFERENT on each Pi)
+HOST_IP=192.168.8.250           # Pi1's IP
+KEEPALIVED_PRIORITY=100         # Higher = MASTER
 
-# Network configuration
-SUBNET=192.168.1.0/24
-GATEWAY=192.168.1.1
+# For validation script compatibility
+PRIMARY_DNS_IP=192.168.8.250
+SECONDARY_DNS_IP=192.168.8.251
 
-# Passwords (use strong passwords!)
-PIHOLE_PASSWORD=your-strong-password-here
-GRAFANA_ADMIN_PASSWORD=your-strong-password-here
-VRRP_PASSWORD=your-strong-password-here
-
-# VRRP configuration for HA
-VRRP_ROUTER_ID=51
-VRRP_PRIORITY=100  # Higher = master preference
+# Passwords (MUST be same on both Pis!)
+# Generate with: openssl rand -base64 32
+PIHOLE_PASSWORD=your-secure-password
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=your-secure-password
+VRRP_PASSWORD=your-secure-vrrp-password
 ```
 
-**Generate secure passwords:**
-```bash
-openssl rand -base64 32
-```
-
-### 4. Deploy Stack on Pi #1
+**Option B: Use Web Wizard**
 
 ```bash
-docker compose -f stacks/dns/docker-compose.yml up -d
+# Start the wizard
+docker compose -f stacks/dns/docker-compose.yml --profile wizard up -d dns-wizard
+
+# Access at http://192.168.8.250:8080
+
+# In the wizard:
+# - Select "High Availability (HA)" mode
+# - Pi IP: 192.168.8.250
+# - VIP: 192.168.8.249
+# - Node Role: MASTER
+# - Interface: eth0
+# - Set passwords
 ```
 
-### 5. Verify Pi #1 is Running
+### 4. Validate Configuration
+
+```bash
+# Validate environment variables
+bash scripts/validate-env.sh
+
+# Check .env file format
+bash scripts/test-env-format.sh
+```
+
+Both scripts should pass before deploying.
+
+### 5. Deploy Stack on Pi #1
+
+```bash
+cd stacks/dns
+docker compose --profile two-pi-ha-pi1 up -d
+```
+
+### 6. Verify Pi #1 is Running
 
 ```bash
 # Check containers
 docker ps
 
 # Verify VIP is on Pi #1
-ip addr show eth0 | grep 192.168.1.200
+ip addr show eth0 | grep 192.168.8.249
 
-# Should show the VIP on eth0
+# Should show the VIP on eth0 as a secondary address
+
+# Run the health check
+bash scripts/vip-health.sh
+
+# Test DNS resolution
+dig +short example.com @192.168.8.249  # Via VIP
+dig +short example.com @192.168.8.250  # Via HOST_IP
 ```
 
 ---
@@ -162,7 +218,7 @@ ip addr show eth0 | grep 192.168.1.200
 
 ```bash
 # On Pi #2
-git clone https://github.com/yorgosroussakis/Orion-sentinel-ha-dns.git
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
 cd Orion-sentinel-ha-dns
 ```
 
@@ -174,192 +230,204 @@ bash scripts/install.sh
 
 ### 3. Configure .env for BACKUP
 
-**Option A: Use Web Wizard**
+**Option A: Copy from Pi1 and modify (Recommended)**
+
+The easiest approach is to copy your working .env from Pi1 and change only the Pi2-specific values:
 
 ```bash
-# Start the wizard
-docker compose -f stacks/dns/docker-compose.yml up -d dns-wizard
-
-# Access at http://192.168.1.101:8080
-
-# In the wizard:
-# - Select "High Availability (HA)" mode
-# - Pi IP: 192.168.1.101
-# - VIP: 192.168.1.200  (SAME as Pi #1)
-# - Node Role: BACKUP
-# - Interface: eth0
-# - Set Pi-hole password (SAME as Pi #1)
-```
-
-**Option B: Manual Configuration**
-
-```bash
-cp .env.example .env
+# Copy .env from Pi1 (via scp or manually)
+scp pi@192.168.8.250:~/Orion-sentinel-ha-dns/.env .env
 nano .env
 ```
 
-Edit the following values:
+Change ONLY these values for Pi2:
 
 ```bash
-# Pi #2 configuration (DIFFERENT from Pi #1)
-HOST_IP=192.168.1.101
+# These are the ONLY values that differ between Pi1 and Pi2:
+HOST_IP=192.168.8.251           # Pi2's IP (was 192.168.8.250)
+KEEPALIVED_PRIORITY=90          # Lower than Pi1 (was 100)
+```
+
+**Option B: Fresh configuration**
+
+```bash
+cp env/.env.two-pi-ha.example .env
+nano .env
+```
+
+Edit the following values for Pi2:
+
+```bash
+# Network configuration (SAME as Pi1)
+SUBNET=192.168.8.0/24
+GATEWAY=192.168.8.1
 NETWORK_INTERFACE=eth0
 
-# Virtual IP (SAME as Pi #1)
-DNS_VIP=192.168.1.200
-VIP_ADDRESS=192.168.1.200
+# IP addresses (SAME as Pi1)
+PI1_IP=192.168.8.250
+PI2_IP=192.168.8.251
+VIP_ADDRESS=192.168.8.249
 
-# Node role (DIFFERENT from Pi #1)
-NODE_ROLE=BACKUP
+# This Pi's specific settings (DIFFERENT from Pi1)
+HOST_IP=192.168.8.251           # Pi2's IP
+KEEPALIVED_PRIORITY=90          # Lower = BACKUP
 
-# Network configuration (SAME as Pi #1)
-SUBNET=192.168.1.0/24
-GATEWAY=192.168.1.1
+# For validation script compatibility
+PRIMARY_DNS_IP=192.168.8.250
+SECONDARY_DNS_IP=192.168.8.251
 
-# Passwords (SAME as Pi #1 - very important!)
-PIHOLE_PASSWORD=your-strong-password-here
-GRAFANA_ADMIN_PASSWORD=your-strong-password-here
-VRRP_PASSWORD=your-strong-password-here  # MUST match Pi #1
-
-# VRRP configuration (DIFFERENT from Pi #1)
-VRRP_ROUTER_ID=51  # SAME as Pi #1
-VRRP_PRIORITY=90   # LOWER than Pi #1 (so Pi #1 is preferred)
+# Passwords (MUST be SAME as Pi1!)
+PIHOLE_PASSWORD=<same-as-pi1>
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=<same-as-pi1>
+VRRP_PASSWORD=<same-as-pi1>     # CRITICAL: Must match Pi1!
 ```
 
-**Critical:** 
-- `VRRP_PASSWORD` **must be the same** on both Pis
-- `VRRP_PRIORITY` must be **lower** on BACKUP (e.g., 90) than MASTER (e.g., 100)
-
-### 4. Deploy Stack on Pi #2
+### 4. Validate Configuration
 
 ```bash
-docker compose -f stacks/dns/docker-compose.yml up -d
+bash scripts/validate-env.sh
+bash scripts/test-env-format.sh
 ```
 
-### 5. Verify Pi #2 is Running
+### 5. Deploy Stack on Pi #2
+
+```bash
+cd stacks/dns
+docker compose --profile two-pi-ha-pi2 up -d
+```
+
+### 6. Verify Pi #2 is Running
 
 ```bash
 # Check containers
 docker ps
 
-# VIP should NOT be on Pi #2 (it's on Pi #1)
-ip addr show eth0 | grep 192.168.1.200
+# VIP should NOT be on Pi #2 (it should be on Pi #1)
+ip addr show eth0 | grep 192.168.8.249
 
-# Should show nothing (VIP is on MASTER)
+# Should show nothing (VIP is on MASTER - Pi1)
+
+# But DNS should still work via Pi2's own IP
+dig +short example.com @192.168.8.251
 ```
 
 ---
 
-## Post-Installation Configuration
+## Post-Installation Verification
 
-### 1. Configure Your Router
+### Verify Complete Setup
 
-**Critical:** Point your router's DNS to the VIP address.
+Run the health check on both Pis:
 
-1. Log into your router's admin interface
-2. Find DNS/DHCP settings
-3. Set **Primary DNS**: `192.168.1.200` (the VIP)
-4. Set **Secondary DNS**: `192.168.1.200` (same VIP)
-5. Save and reboot router if needed
+```bash
+# On both Pis
+bash scripts/vip-health.sh
+```
 
-**Why use the VIP for both primary and secondary?**
-- The VIP automatically points to whichever Pi is active
-- If you used individual Pi IPs, failover wouldn't work for secondary DNS
+Expected output on Pi1 (MASTER):
+```
+[✓] VIP 192.168.8.249 is present on eth0
+[✓] DNS via VIP works
+[✓] DNS via HOST_IP works
+[✓] Keepalived container is running
+[✓] Pi-hole container is running
+[✓] All health checks PASSED
+```
 
-### 2. Verify Failover Works
+Expected output on Pi2 (BACKUP):
+```
+[✗] VIP 192.168.8.249 is NOT present on eth0
+    This node may be in BACKUP state...
+[✓] DNS via HOST_IP works
+[✓] Keepalived container is running
+[✓] Pi-hole container is running
+```
 
-**Test 1: Check which Pi has the VIP**
+(The VIP not being present on Pi2 is expected - it's on Pi1!)
+
+### Test DNS Resolution
+
+From any device on your network:
+
+```bash
+# Test via VIP (should always work)
+dig +short example.com @192.168.8.249
+
+# Test via Pi1 directly
+dig +short example.com @192.168.8.250
+
+# Test via Pi2 directly
+dig +short example.com @192.168.8.251
+```
+
+All three should return valid IP addresses.
+
+---
+
+## Testing Failover
+
+### Test 1: Verify VIP Location
 
 On Pi #1:
 ```bash
-ip addr show eth0 | grep 192.168.1.200
-# Should show VIP
+ip addr show eth0 | grep 192.168.8.249
+# Should show: inet 192.168.8.249/24 scope global secondary eth0
 ```
 
 On Pi #2:
 ```bash
-ip addr show eth0 | grep 192.168.1.200
-# Should show nothing
+ip addr show eth0 | grep 192.168.8.249
+# Should show nothing (VIP is on Pi1)
 ```
 
-**Test 2: Failover Test**
+### Test 2: Simulate Failover
 
 ```bash
-# From any device on your network
-ping -t 192.168.1.200
+# From any device, start continuous ping to VIP
+ping 192.168.8.249
 
-# On Pi #1, stop Keepalived to trigger failover
+# On Pi #1, stop keepalived to trigger failover
 docker stop keepalived
 
-# Watch ping output - should continue with minimal packet loss
+# Watch the ping - you should see 1-3 lost packets, then it continues
 # VIP should move to Pi #2 within 2-5 seconds
 ```
 
-Check Pi #2:
+Verify on Pi #2:
 ```bash
-ip addr show eth0 | grep 192.168.1.200
-# Should now show VIP on Pi #2
+ip addr show eth0 | grep 192.168.8.249
+# Should now show the VIP on Pi2!
 ```
 
-**Test 3: Fail back to Pi #1**
+### Test 3: Fail Back to Pi #1
 
 ```bash
-# On Pi #1, restart Keepalived
+# On Pi #1, restart keepalived
 docker start keepalived
 
 # Wait 5-10 seconds
 # VIP should return to Pi #1 (higher priority)
 
-# Verify
-ip addr show eth0 | grep 192.168.1.200
-# Should show VIP back on Pi #1
+ip addr show eth0 | grep 192.168.8.249
+# Should show VIP back on Pi1
 ```
 
-### 3. Test DNS Resolution
+---
 
-From any device on your network:
+## Configure Your Router
 
-```bash
-nslookup google.com
+**Critical:** Point your router's DNS to the VIP address.
 
-# Should show 192.168.1.200 as DNS server
-# Try from multiple devices to verify
-```
+1. Log into your router's admin interface
+2. Find DNS/DHCP settings
+3. Set **Primary DNS**: `192.168.8.249` (the VIP)
+4. Set **Secondary DNS**: `192.168.8.249` (same VIP)
+5. Save and reboot router if needed
 
-### 4. Apply DNS Security Profile
-
-Choose which profile to use on **both Pis**:
-
-On Pi #1:
-```bash
-python3 scripts/apply-profile.py --profile standard
-```
-
-On Pi #2:
-```bash
-python3 scripts/apply-profile.py --profile standard
-```
-
-Or use the wizard's profile re-application feature:
-- `http://192.168.1.100:8080/done` (Pi #1)
-- `http://192.168.1.101:8080/done` (Pi #2)
-
-### 5. Set Up Pi-hole Sync (Optional but Recommended)
-
-To keep Pi-hole configurations synchronized:
-
-```bash
-# On both Pis, the pihole-sync container should be running
-docker ps | grep pihole-sync
-
-# Check logs to verify sync is working
-docker logs pihole-sync
-```
-
-The sync container automatically:
-- Copies whitelist/blacklist between Pis
-- Syncs adlists
-- Runs every 5 minutes
+**Why use the VIP for both primary and secondary?**
+- The VIP automatically points to whichever Pi is active
+- If you used individual Pi IPs, failover wouldn't work properly
 
 ---
 
@@ -367,21 +435,16 @@ The sync container automatically:
 
 ### Pi-hole Admin Interfaces
 
-- **Primary (via VIP):** `http://192.168.1.200/admin`
-- **Pi #1 directly:** `http://192.168.1.100/admin`
-- **Pi #2 directly:** `http://192.168.1.101/admin`
+- **Primary (via VIP):** `http://192.168.8.249/admin`
+- **Pi #1 directly:** `http://192.168.8.250/admin`
+- **Pi #2 directly:** `http://192.168.8.251/admin`
 
 Login with the password set in `.env` (`PIHOLE_PASSWORD`).
 
 ### Grafana Dashboards
 
-- **Pi #1:** `http://192.168.1.100:3000`
-- **Pi #2:** `http://192.168.1.101:3000`
-
-### Web Wizard
-
-- **Pi #1:** `http://192.168.1.100:8080`
-- **Pi #2:** `http://192.168.1.101:8080`
+- **Pi #1:** `http://192.168.8.250:3000`
+- **Pi #2:** `http://192.168.8.251:3000`
 
 ---
 
@@ -390,7 +453,7 @@ Login with the password set in `.env` (`PIHOLE_PASSWORD`).
 ```
 ┌─────────────────────────────┐  ┌─────────────────────────────┐
 │  Pi #1 (MASTER)             │  │  Pi #2 (BACKUP)             │
-│  192.168.1.100              │  │  192.168.1.101              │
+│  192.168.8.250              │  │  192.168.8.251              │
 │                              │  │                              │
 │  ┌────────────────────────┐ │  │  ┌────────────────────────┐ │
 │  │     Keepalived         │ │  │  │     Keepalived         │ │
@@ -411,7 +474,7 @@ Login with the password set in `.env` (`PIHOLE_PASSWORD`).
                         │
               ┌─────────▼─────────┐
               │   VIP (Floating)  │
-              │  192.168.1.200    │
+              │  192.168.8.249    │
               └─────────┬─────────┘
                         │
                  ┌──────▼──────┐
@@ -424,11 +487,13 @@ Login with the password set in `.env` (`PIHOLE_PASSWORD`).
                  └─────────────┘
 ```
 
+**DNS Flow:** `Clients → VIP (192.168.8.249) → Pi-hole → Unbound → NextDNS DoT → Internet`
+
 **Failover process:**
-1. Keepalived on both Pis sends VRRP heartbeats
+1. Keepalived on both Pis exchanges VRRP heartbeats (unicast)
 2. If Pi #1 (MASTER) fails, Pi #2 detects missing heartbeats
 3. Pi #2 (BACKUP) promotes itself to MASTER
-4. VIP moves from Pi #1 to Pi #2
+4. VIP moves from Pi #1 to Pi #2 (gratuitous ARP)
 5. DNS queries automatically route to Pi #2
 6. When Pi #1 recovers, it reclaims the VIP (higher priority)
 
@@ -470,12 +535,14 @@ bash scripts/upgrade.sh
 ### Monitor HA Status
 
 ```bash
-# Check Keepalived status on both Pis
+# Quick health check
+bash scripts/vip-health.sh
+
+# Check Keepalived logs
 docker logs keepalived
 
 # Check which Pi has VIP
-# On both Pis:
-ip addr show eth0 | grep 192.168.1.200
+ip addr show eth0 | grep 192.168.8.249
 ```
 
 ### Sync Pi-hole Configuration
@@ -498,39 +565,95 @@ docker exec pihole_primary pihole -a -t
 
 ### VIP Not Appearing
 
+**Run the health check first:**
+```bash
+bash scripts/vip-health.sh
+```
+
 **Check Keepalived logs:**
 ```bash
 docker logs keepalived
 ```
 
 **Common issues:**
-- VRRP_PASSWORD mismatch between Pis
-- Network interface name wrong (should be `eth0` or similar)
-- Both Pis set to same priority
+
+1. **VRRP_PASSWORD mismatch** - Must be identical on both Pis
+2. **Invalid keepalived.conf** - Look for parse errors in logs like:
+   - "Unknown keyword"
+   - "Unexpected '{'"
+   - "No VIP specified"
+3. **Wrong NETWORK_INTERFACE** - Should be `eth0` for Raspberry Pi
+4. **VIP is broadcast address** - Don't use .255, use .249 or similar
+5. **Both Pis have same priority** - Pi1 should be 100, Pi2 should be 90
+
+**Fix: Check if keepalived is generating config properly:**
+```bash
+# View the generated config
+docker exec keepalived cat /etc/keepalived/keepalived.conf
+
+# Look for correct values:
+# - VIP address (should be your VIP_ADDRESS)
+# - Interface (should be your NETWORK_INTERFACE)
+# - Priority (should match your KEEPALIVED_PRIORITY)
+```
+
+### DNS Not Reachable
+
+**Check if Pi-hole is listening on port 53:**
+```bash
+# On the host
+sudo ss -uapn | grep ':53'
+
+# Should show something listening on port 53
+```
+
+**Check if DNS works inside the container:**
+```bash
+docker exec pihole_primary dig +short example.com @127.0.0.1
+```
+
+**Common issues:**
+1. Port 53 not exposed in docker-compose
+2. Firewall blocking port 53
+3. Another service using port 53 (like systemd-resolved)
+
+**Fix systemd-resolved conflict:**
+```bash
+# Disable stub resolver
+sudo sed -i 's/#DNSStubListener=yes/DNSStubListener=no/' /etc/systemd/resolved.conf
+sudo systemctl restart systemd-resolved
+```
 
 ### Failover Not Working
 
-**Verify VRRP communication:**
+**Verify VRRP communication (unicast mode):**
 ```bash
-# On both Pis
-sudo tcpdump -i eth0 vrrp
+# On both Pis, check if keepalived is communicating
+docker logs keepalived | grep -E "(MASTER|BACKUP|Sending|Received)"
+```
 
-# Should see VRRP advertisements
+**Check if peer is reachable:**
+```bash
+# From Pi1, ping Pi2
+ping 192.168.8.251
+
+# From Pi2, ping Pi1
+ping 192.168.8.250
 ```
 
 **Check firewall:**
 ```bash
-# Ensure VRRP (protocol 112) is allowed
-sudo iptables -L -n | grep vrrp
+# VRRP uses IP protocol 112
+sudo iptables -L -n | grep 112
 ```
 
 ### Pi-hole Configs Out of Sync
 
-**Use pihole-sync manually:**
+**Use Teleporter for manual sync:**
 ```bash
 # On Pi #1, copy Pi-hole gravity database to Pi #2
 docker cp pihole_primary:/etc/pihole/gravity.db /tmp/
-scp /tmp/gravity.db pi@192.168.1.101:/tmp/
+scp /tmp/gravity.db pi@192.168.8.251:/tmp/
 
 # On Pi #2
 docker cp /tmp/gravity.db pihole_secondary:/etc/pihole/
@@ -542,17 +665,16 @@ docker exec pihole_secondary pihole restartdns reload-lists
 ## Best Practices
 
 1. **Use identical .env files** except for:
-   - `HOST_IP`
-   - `NODE_ROLE`
-   - `VRRP_PRIORITY`
+   - `HOST_IP` (each Pi's own IP)
+   - `KEEPALIVED_PRIORITY` (100 for Pi1, 90 for Pi2)
 
 2. **Keep Pi-hole configs in sync**
-   - Use pihole-sync container
+   - Use pihole-sync container (single-pi-ha mode)
    - Or manually sync via Teleporter
 
 3. **Update one Pi at a time**
    - Prevents total DNS outage
-   - Test on BACKUP first
+   - Test on BACKUP (Pi2) first
 
 4. **Monitor both Pis**
    - Check logs regularly
