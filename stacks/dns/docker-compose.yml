@@ -44,8 +44,10 @@ x-pihole-common: &pihole-common
         memory: 128M
 
 x-unbound-common: &unbound-common
-  image: klutchell/unbound:latest
+  build: ./unbound
   restart: unless-stopped
+  environment:
+    - UNBOUND_SMART_PREFETCH=${UNBOUND_SMART_PREFETCH:-0}
   healthcheck:
     test: ["CMD", "nc", "-z", "-u", "127.0.0.1", "5335"]
     interval: 30s
@@ -56,7 +58,7 @@ x-unbound-common: &unbound-common
     resources:
       limits:
         cpus: '0.5'
-        memory: 256M
+        memory: 512M
       reservations:
         cpus: '0.1'
         memory: 64M
@@ -124,7 +126,6 @@ services:
     networks:
       - dns_net
     volumes:
-      - ./unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
       - unbound_primary_run:/run
 
   unbound_secondary:
@@ -137,7 +138,6 @@ services:
     networks:
       - dns_net
     volumes:
-      - ./unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
       - unbound_secondary_run:/run
 
   keepalived:

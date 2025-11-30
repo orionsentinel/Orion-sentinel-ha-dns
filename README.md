@@ -128,6 +128,8 @@ This repository is the **DNS & Privacy layer** of the Orion Sentinel platform:
 - 🔗 **Multi-Node Sync**: Automatic configuration sync between nodes 🆕
 - 🔧 **Self-Healing**: Automatic failure detection and recovery 🆕
 - 📤 **Off-Site Backup**: Remote backup to NAS/cloud storage 🆕
+- 🧠 **Smart DNS Prefetch**: Enhanced caching with prefetch and privacy hardening 🆕
+- 🔐 **Encrypted DNS Gateway**: DoH/DoT terminator for dumb devices 🆕
 
 **Integration with NSM/AI Pi:**
 - Exposes DNS logs for security analysis
@@ -135,6 +137,41 @@ This repository is the **DNS & Privacy layer** of the Orion Sentinel platform:
 - Shared observability stack (optional)
 
 See [docs/ORION_SENTINEL_INTEGRATION.md](docs/ORION_SENTINEL_INTEGRATION.md) for integration details.
+
+---
+
+## 🧠 Smart DNS (Unbound Prefetch + Hardened Config)
+
+Enable smarter DNS resolution with prefetching and enhanced privacy hardening.
+
+**Features:**
+- **Prefetching**: Proactively refreshes popular DNS records before they expire
+- **Enhanced Caching**: Larger caches (up to 448MB) with optimized TTL settings
+- **QNAME Minimisation**: Only sends minimum necessary query name for enhanced privacy
+- **DNSSEC Hardening**: Strengthened DNSSEC validation and anti-stripping protection
+- **Serve Expired**: Faster perceived response times during cache refresh
+
+**Enable/Disable:**
+```bash
+# In your .env file:
+UNBOUND_SMART_PREFETCH=1  # Enable (0 = disabled, default)
+```
+
+**Memory Usage:**
+- Maximum cache utilization: ~448MB
+- Suitable for Raspberry Pi 4/5 with 2-8GB RAM
+
+**What Gets Tuned:**
+| Setting | Default | Smart Prefetch |
+|---------|---------|----------------|
+| `msg-cache-size` | 50MB | 128MB |
+| `rrset-cache-size` | 100MB | 256MB |
+| `key-cache-size` | - | 64MB |
+| `cache-min-ttl` | 3600s | 60s |
+| `serve-expired-ttl` | 86400s | 180s |
+| `qname-minimisation-strict` | no | yes |
+
+**Note:** DNSSEC validation and existing privacy settings remain active and are only strengthened.
 
 ---
 
