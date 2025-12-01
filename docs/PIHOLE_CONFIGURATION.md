@@ -95,7 +95,8 @@ NEXTDNS_ENABLED=true
 
 # Your NextDNS profile-specific IPv4 endpoint
 # Get this from: https://my.nextdns.io → Setup Guide → Endpoints
-NEXTDNS_IPV4=45.90.28.xxx
+# Replace with your actual profile IP (e.g., 45.90.28.123)
+NEXTDNS_IPV4=<YOUR_PROFILE_IP>
 
 # Optional: IPv6 endpoint (if your network supports it)
 NEXTDNS_IPV6=2a07:a8c0::xx:xxxx
@@ -170,7 +171,7 @@ PIHOLE_DNS_SECONDARY=unbound_secondary#5335
 ```bash
 # In your .env file:
 NEXTDNS_ENABLED=true
-NEXTDNS_IPV4=45.90.28.xxx  # Replace with your profile IP
+NEXTDNS_IPV4=<YOUR_PROFILE_IP>  # Replace with your profile IP (e.g., 45.90.28.123)
 NEXTDNS_DOT_PORT=853
 NEXTDNS_HOSTNAME=dns.nextdns.io
 
