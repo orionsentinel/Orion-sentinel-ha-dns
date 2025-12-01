@@ -1,13 +1,48 @@
 # Complete Installation Guide 📦
 
 ## Table of Contents
-1. [Prerequisites](#prerequisites)
-2. [Hardware Requirements](#hardware-requirements)
-3. [Quick Installation](#quick-installation)
-4. [Detailed Installation](#detailed-installation)
-5. [Post-Installation Configuration](#post-installation-configuration)
-6. [Verification](#verification)
-7. [Troubleshooting](#troubleshooting)
+1. [⚠️ Pi-hole DNS Configuration (IMPORTANT)](#️-pi-hole-dns-configuration-important)
+2. [Prerequisites](#prerequisites)
+3. [Hardware Requirements](#hardware-requirements)
+4. [Quick Installation](#quick-installation)
+5. [Detailed Installation](#detailed-installation)
+6. [Post-Installation Configuration](#post-installation-configuration)
+7. [Verification](#verification)
+8. [Troubleshooting](#troubleshooting)
+
+---
+
+## ⚠️ Pi-hole DNS Configuration (IMPORTANT)
+
+> **🔒 Privacy Policy: This project ONLY supports Unbound or NextDNS as upstream DNS providers for Pi-hole.**
+
+Before proceeding with installation, understand this critical privacy requirement:
+
+### Allowed DNS Upstreams
+
+| Provider | Configuration | Privacy Level |
+|----------|---------------|---------------|
+| **Unbound** (Default) | `127.0.0.1#5335` | 🟢 Maximum - Local recursive resolver |
+| **NextDNS** (Alternative) | DoT via Unbound | 🟢 User-controlled privacy |
+
+### NOT Allowed (Privacy Risk)
+
+❌ **DO NOT configure Pi-hole to use these public DNS providers:**
+- Google DNS (8.8.8.8)
+- Cloudflare DNS (1.1.1.1)
+- OpenDNS (208.67.222.222)
+- Quad9 (9.9.9.9)
+- Any other third-party public DNS
+
+### Why This Policy?
+
+Using public DNS resolvers exposes your **entire DNS query history** to third parties. With Unbound:
+- DNS queries go directly to authoritative servers
+- No single third party sees all your queries
+- DNSSEC validation is performed locally
+- Complete privacy control
+
+📖 **[Read the full Pi-hole DNS Configuration Guide](docs/PIHOLE_CONFIGURATION.md)** for detailed rationale and configuration instructions.
 
 ---
 

@@ -63,6 +63,14 @@ These guides walk you through:
 - **[🚀 QUICKSTART.md](QUICKSTART.md)** - One-page guide to get started fast
 - **[📖 INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md)** - Detailed installation instructions
 
+### ⚠️ Pi-hole DNS Configuration (CRITICAL)
+- **[🔒 Pi-hole DNS Configuration Guide](docs/PIHOLE_CONFIGURATION.md)** - **MUST READ** - Privacy-first DNS policy ⭐ NEW
+- **[🌐 NextDNS Integration](docs/orion-dns-nextdns-v1.1.md)** - Alternative to Unbound with user-controlled privacy
+
+> **Privacy Policy:** This project **ONLY** supports Unbound (local recursive) or NextDNS as Pi-hole upstreams.
+> Public DNS providers (Google, Cloudflare, OpenDNS, Quad9) are **NOT supported** for privacy reasons.
+> See the [Pi-hole DNS Configuration Guide](docs/PIHOLE_CONFIGURATION.md) for details.
+
 ### Operations & Maintenance
 - **[📋 OPERATIONAL_RUNBOOK.md](OPERATIONAL_RUNBOOK.md)** - Day-to-day operations guide ⭐ NEW
 - **[🔧 TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Fix common issues
