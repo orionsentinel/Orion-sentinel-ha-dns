@@ -428,6 +428,28 @@ python3 scripts/apply-profile.py --profile family --dry-run
 
 📖 **[Security Profiles Guide](docs/profiles.md)** - Profile details and customization
 
+### 📋 Pre-configured Blocklists
+
+Out of the box, Pi-hole is configured with high-quality, curated blocklists:
+
+| List | Description | Domains |
+|------|-------------|---------|
+| **Hagezi Pro++** | Comprehensive ad/tracker/malware blocking | ~3M |
+| **OISD Big** | Balanced blocking with low false positives | ~1.9M |
+| **Hagezi Threat Intelligence** | Malware, phishing, threat intel | ~500K |
+| **Hagezi Multi** | Multi-purpose filtering (family+ profiles) | ~1M |
+
+**Blocklist Profile Environment Variable:**
+```bash
+# In .env file or at runtime
+PIHOLE_BLOCKLIST_PROFILE=standard  # standard (default), family, or paranoid
+```
+
+**Pre-configured Streaming Whitelist:**
+Disney+, Netflix, Amazon Prime, Hulu, HBO Max, Apple TV+, Spotify, YouTube
+
+📖 **[USER_GUIDE.md](USER_GUIDE.md#blocklist-profiles--customization)** - Detailed blocklist documentation
+
 ### 💾 Backup & Disaster Recovery
 
 Automated configuration backups for peace of mind:

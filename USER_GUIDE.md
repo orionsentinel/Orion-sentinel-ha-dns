@@ -106,7 +106,8 @@ bash scripts/health-check.sh
 **Popular Blocklists**:
 - Hagezi Pro++ (already installed): https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/pro.plus.txt
 - OISD Big (already installed): https://big.oisd.nl/domainswild
-- StevenBlack: https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+- Hagezi Threat Intelligence (already installed): https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/threat-intelligence.txt
+- StevenBlack (optional): https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
 
 #### View Query Log
 1. Go to http://192.168.8.251/admin
@@ -126,6 +127,120 @@ docker restart pihole_primary pihole_secondary
 # Or from Pi-hole web UI
 # Tools → Clear Logs → Clear DNS Cache
 ```
+
+---
+
+## Blocklist Profiles & Customization
+
+### Pre-configured Blocklist Profiles
+
+Orion Sentinel DNS HA comes with three curated blocklist profiles that can be selected during setup:
+
+| Profile | Use Case | Domains | Memory | Trade-off |
+|---------|----------|---------|--------|-----------|
+| **Standard** | General home/office | ~4-5M | ~200MB | Best balance of blocking vs compatibility |
+| **Family** | Families with children | ~5-6M | ~250MB | More filtering, occasional false positives |
+| **Paranoid** | Privacy-focused users | ~7-8M | ~350MB | Maximum blocking, may break some sites |
+
+### Default Blocklists (Standard Profile)
+
+These high-quality, well-maintained lists are installed by default:
+
+| List | Purpose | Domains |
+|------|---------|---------|
+| **Hagezi Pro++** | Ads, tracking, malware, phishing | ~3M |
+| **OISD Big** | Balanced blocking, low false positives | ~1.9M |
+| **Hagezi Threat Intelligence** | Malware, C&C servers, threat intel | ~500K |
+
+### Family Profile Additions
+
+Adds to standard profile:
+- **Hagezi Multi**: Additional family-safe filtering (~1M domains)
+
+### Paranoid Profile Additions
+
+Adds to family profile:
+- **Hagezi Ultimate**: Maximum coverage blocking (~2M domains)
+
+### Setting Your Profile
+
+**During initial setup:**
+```bash
+# Standard (default)
+bash stacks/dns/setup-pihole.sh
+
+# Family
+PIHOLE_BLOCKLIST_PROFILE=family bash stacks/dns/setup-pihole.sh
+
+# Paranoid
+PIHOLE_BLOCKLIST_PROFILE=paranoid bash stacks/dns/setup-pihole.sh
+```
+
+**Via environment variable:**
+Add to your `.env` file:
+```bash
+PIHOLE_BLOCKLIST_PROFILE=standard  # or family, paranoid
+```
+
+### Pre-configured Whitelist
+
+To prevent common streaming service issues, these domains are automatically whitelisted:
+
+**Disney+**: `disneyplus.com`, `disney-plus.net`, `disneystreaming.com`, `bamgrid.com`, `dssott.com`
+
+**Netflix**: `netflix.com`, `nflxvideo.net`, `nflximg.net`, `nflxext.com`
+
+**Amazon Prime**: `amazon.com`, `amazonvideo.com`, `aiv-cdn.net`
+
+**Others**: Hulu, HBO Max, Apple TV+, Spotify, YouTube (basic)
+
+### Adding Custom Whitelists
+
+If a service isn't working, check the Pi-hole query log and whitelist the blocked domain:
+
+```bash
+# Whitelist a domain
+docker exec pihole_primary pihole -w example.com
+
+# Whitelist multiple domains
+docker exec pihole_primary pihole -w plex.tv plex.direct
+```
+
+### Verification Steps
+
+After setup, verify your blocklist configuration:
+
+```bash
+# 1. Check Pi-hole status
+docker exec pihole_primary pihole status
+
+# 2. Verify domain count (look for "Domains being blocked")
+docker exec pihole_primary pihole -c -e
+
+# 3. Test DNS resolution (should return an IP)
+dig @192.168.8.251 google.com +short
+
+# 4. Test ad blocking (should return 0.0.0.0 or NXDOMAIN)
+dig @192.168.8.251 ads.google.com +short
+
+# 5. Test streaming (should return valid IPs)
+dig @192.168.8.251 disneyplus.com +short
+dig @192.168.8.251 netflix.com +short
+```
+
+### Performance Considerations
+
+| Metric | Standard | Family | Paranoid |
+|--------|----------|--------|----------|
+| Query response | < 50ms | < 50ms | < 50ms |
+| Gravity update | ~2 min | ~3 min | ~4 min |
+| Memory per instance | ~200MB | ~250MB | ~350MB |
+| CPU usage | < 5% | < 5% | < 5% |
+
+**Notes:**
+- Gravity updates run automatically daily at 3 AM
+- Larger blocklists require more memory but don't affect query performance
+- The paranoid profile may require more whitelisting for daily use
 
 ---
 
