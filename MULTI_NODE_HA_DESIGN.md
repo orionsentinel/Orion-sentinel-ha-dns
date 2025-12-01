@@ -488,7 +488,7 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y docker.io docker-compose git rsync
 
 # Clone repository
-git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
 cd rpi-ha-dns-stack
 ```
 

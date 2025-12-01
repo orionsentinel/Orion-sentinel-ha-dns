@@ -1,13 +1,36 @@
-# Complete Installation Guide 📦
+# Installation Guide
 
-## Table of Contents
-1. [Prerequisites](#prerequisites)
-2. [Hardware Requirements](#hardware-requirements)
-3. [Quick Installation](#quick-installation)
-4. [Detailed Installation](#detailed-installation)
-5. [Post-Installation Configuration](#post-installation-configuration)
-6. [Verification](#verification)
-7. [Troubleshooting](#troubleshooting)
+> **📌 This page redirects to the main installation guide.**
+
+For installation instructions, please see:
+
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** — Quick start guide (recommended)
+- **[INSTALL.md](INSTALL.md)** — Comprehensive installation reference
+
+---
+
+## Quick Start
+
+```bash
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
+cd Orion-sentinel-ha-dns
+bash install.sh
+```
+
+Then open `http://<your-pi-ip>:5555` and follow the wizard.
+
+---
+
+## Deployment Guides
+
+- **[docs/install-single-pi.md](docs/install-single-pi.md)** — Single Raspberry Pi setup
+- **[docs/install-two-pi-ha.md](docs/install-two-pi-ha.md)** — Two-Pi high availability setup
+
+---
+
+## After Installation
+
+See **[USER_GUIDE.md](USER_GUIDE.md)** for daily operations and maintenance.
 
 ---
 
@@ -56,7 +79,7 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
 cd rpi-ha-dns-stack
 
 # Run automated installer
@@ -144,7 +167,7 @@ sudo systemctl start docker
 
 ```bash
 cd /opt
-sudo git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
+sudo git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
 sudo chown -R $USER:$USER rpi-ha-dns-stack
 cd rpi-ha-dns-stack
 ```
@@ -560,7 +583,7 @@ docker stats
    - [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md)
    - [SECURITY_GUIDE.md](SECURITY_GUIDE.md)
 
-4. **GitHub Issues**: https://github.com/yorgosroussakis/rpi-ha-dns-stack/issues
+4. **GitHub Issues**: https://github.com/orionsentinel/Orion-sentinel-ha-dns/issues
 
 ---
 

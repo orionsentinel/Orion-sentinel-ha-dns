@@ -64,7 +64,7 @@ Created three new guides to help you:
 
 ```bash
 # Clone or update the repository
-git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
 cd rpi-ha-dns-stack
 
 # Use the new easy installer
@@ -112,7 +112,7 @@ bash scripts/easy-install.sh
    cat TROUBLESHOOTING.md
    ```
 
-4. **Create an issue:** https://github.com/yorgosroussakis/rpi-ha-dns-stack/issues
+4. **Create an issue:** https://github.com/orionsentinel/Orion-sentinel-ha-dns/issues
 
 ## What Changed Technically
 

@@ -447,5 +447,5 @@ wizard/
 **Need Help?**
 
 - Check the [Troubleshooting Guide](../TROUBLESHOOTING.md)
-- Visit the [GitHub repository](https://github.com/yorgosroussakis/Orion-sentinel-ha-dns)
+- Visit the [GitHub repository](https://github.com/orionsentinel/Orion-sentinel-ha-dns)
 - Review the [README](../README.md) for additional resources

@@ -208,7 +208,7 @@ When migrating to a new Pi:
 2. **On New System:**
    ```bash
    # Clone repository
-   git clone https://github.com/yorgosroussakis/Orion-sentinel-ha-dns.git
+   git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
    cd Orion-sentinel-ha-dns
    
    # Copy backup file to backups/ directory
@@ -419,7 +419,7 @@ du -h stacks/dns/pihole*/etc-pihole/
 See comprehensive troubleshooting guide:
 - [TROUBLESHOOTING.md](../TROUBLESHOOTING.md)
 - [DISASTER_RECOVERY.md](../DISASTER_RECOVERY.md)
-- GitHub Issues: https://github.com/yorgosroussakis/Orion-sentinel-ha-dns/issues
+- GitHub Issues: https://github.com/orionsentinel/Orion-sentinel-ha-dns/issues
 
 ---
 

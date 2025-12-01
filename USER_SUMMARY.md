@@ -1,23 +1,42 @@
-# Complete Solution Summary - Installation Issues Fixed! 🎉
+# User Summary
 
-## What You Asked For
+> **📌 This page redirects to the main user guide.**
 
-> "I need you to redo the webui and make sure it progresses smoothly and works impeccable. Same for the guided terminal config. There were some hickups after i finished the config with copying commands to terminal. Execute them automatically."
+For complete usage instructions, see:
 
-## What I Delivered
+- **[USER_GUIDE.md](USER_GUIDE.md)** — Comprehensive user guide
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** — Quick start guide
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** — Common issues and solutions
 
-### ✅ Phase 1: Fixed All Installation Issues (7 commits)
-**Problem:** Scripts caused SSH disconnects (appeared as "reboots")
-**Solution:** 
-- Fixed error handling in ALL 25 shell scripts
-- Created new robust easy-install.sh
-- Added comprehensive documentation
+---
 
-### ✅ Phase 2: Automatic Deployment (2 commits)  
-**Problem:** Manual command copying caused "hiccups"
-**Solution:**
-- **Web UI**: Added "Deploy Now" button - ONE CLICK deployment!
-- **Terminal Setup**: Automatic command execution - NO MORE copying!
+## Quick Commands
+
+```bash
+# Check service status
+docker ps
+
+# Test DNS
+dig @<your-ip> google.com
+
+# Health check
+bash scripts/health-check.sh
+
+# Apply security profile
+python3 scripts/apply-profile.py --profile standard
+
+# Backup configuration
+bash scripts/backup-config.sh
+```
+
+---
+
+## Access Services
+
+| Service | URL |
+|---------|-----|
+| Pi-hole Admin | `http://<your-ip>/admin` |
+| Grafana | `http://<your-ip>:3000` |
 
 ## The New Experience
 

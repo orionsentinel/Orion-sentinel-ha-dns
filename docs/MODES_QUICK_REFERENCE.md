@@ -29,7 +29,7 @@ This repository supports two deployment modes to suit different use cases.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yorgosroussakis/Orion-sentinel-ha-dns.git
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
 cd Orion-sentinel-ha-dns
 
 # Deploy core DNS services

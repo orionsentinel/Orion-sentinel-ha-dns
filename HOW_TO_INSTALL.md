@@ -1,54 +1,21 @@
-# How to Install and Test Orion Sentinel DNS HA
+# How to Install Orion Sentinel DNS HA
 
-**Quick Answer**: Yes, it works! The installation has been thoroughly tested and verified. Follow the steps below.
+> **📌 This page redirects to the main installation guide.**
 
----
+For installation instructions, please see:
 
-## ✅ It Works - Proof
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** — Quick start guide (recommended)
+- **[INSTALL.md](INSTALL.md)** — Comprehensive installation reference
 
-The Orion Sentinel DNS HA stack has been **tested and verified** to work correctly:
+## Quick Start
 
-- **39 out of 39 installation checks passed** ✅
-- **All Docker Compose configurations validated** ✅
-- **All scripts have valid syntax** ✅
-- **Documentation is comprehensive** ✅
-- **Security measures in place** ✅
-
-See [TEST_RESULTS.md](TEST_RESULTS.md) for complete test results.
-
----
-
-## 🚀 Installation Steps (Quick Version)
-
-### 1. Verify Your System
 ```bash
 git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
 cd Orion-sentinel-ha-dns
-bash scripts/verify-installation.sh
-```
-
-This checks if your system is ready (takes ~30 seconds).
-
-### 2. Install
-```bash
 bash install.sh
 ```
 
-### 3. Configure
-Open your browser to: `http://<your-pi-ip>:5555`
-
-Follow the web wizard to complete setup.
-
-### 4. Use
-Access Pi-hole at: `http://192.168.8.251/admin`
-
----
-
-## 📖 Complete Installation Guide
-
-For detailed instructions, see:
-- **[INSTALLATION_STEPS.md](INSTALLATION_STEPS.md)** - Quick reference with all methods
-- **[INSTALL.md](INSTALL.md)** - Comprehensive guide with troubleshooting
+Then open `http://<your-pi-ip>:5555` and follow the wizard.
 
 ---
 

@@ -1,58 +1,37 @@
-# Deployment Guide for Fixed DNS Stack
+# Deployment Guide
 
-## What Was Fixed
+> **📌 This page redirects to the main installation guide.**
 
-This update resolves critical issues preventing the DNS stack from running on Raspberry Pi (ARM64):
+For deployment instructions, please see:
 
-### 1. Architecture Issues ✅
-**Problem**: The original docker-compose.yml used AMD64-only images, causing "exec format error" on ARM64 Raspberry Pi.
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** — Quick start guide
+- **[INSTALL.md](INSTALL.md)** — Comprehensive installation reference
+- **[docs/install-single-pi.md](docs/install-single-pi.md)** — Single Pi deployment
+- **[docs/install-two-pi-ha.md](docs/install-two-pi-ha.md)** — Two-Pi HA deployment
 
-**Solution**: 
-- Switched to `mvance/unbound-rpi:latest` (ARM64-compatible)
-- Switched to `ghcr.io/rmartin16/keepalived:v2.2.7` (ARM64-compatible)
-- Pi-hole already supports ARM64
+---
 
-### 2. Network Configuration Issues ✅
-**Problem**: The network was showing as "bridge" instead of "macvlan" because docker-compose.yml didn't define the network properly.
+## Deployment Options
 
-**Solution**: Added proper macvlan network definition with IPAM:
-```yaml
-networks:
-  dns_net:
-    driver: macvlan
-    driver_opts:
-      parent: ${NETWORK_INTERFACE:-eth0}
-    ipam:
-      config:
-        - subnet: ${SUBNET:-192.168.8.0/24}
-          gateway: ${GATEWAY:-192.168.8.1}
-          ip_range: 192.168.8.250/28
+| Option | Description | Best For |
+|--------|-------------|----------|
+| **Single-Pi HA** | One Pi, container redundancy | Home labs, testing |
+| **Two-Pi HA** | Two Pis, hardware redundancy | Production |
+| **VPN Edition** | HA DNS + WireGuard | Remote access |
+
+See **[deployments/](deployments/)** for detailed configurations.
+
+---
+
+## Quick Start
+
+```bash
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
+cd Orion-sentinel-ha-dns
+bash install.sh
 ```
 
-### 3. IP Address Conflicts ✅
-**Problem**: Multiple containers were trying to use the same IP addresses:
-- pihole_primary and unbound_primary both used .241
-- pihole_secondary and unbound_secondary both used .242
-
-**Solution**: Assigned unique IPs in the .250 range:
-- **pihole_primary**: 192.168.8.251
-- **pihole_secondary**: 192.168.8.252
-- **unbound_primary**: 192.168.8.253
-- **unbound_secondary**: 192.168.8.254
-- **keepalived VIP**: 192.168.8.255
-
-### 4. Keepalived Configuration ✅
-**Problem**: Keepalived needs special network access for VRRP to work.
-
-**Solution**: Changed to host network mode with required capabilities:
-```yaml
-keepalived:
-  network_mode: host
-  cap_add:
-    - NET_ADMIN
-    - NET_BROADCAST
-    - NET_RAW
-```
+Then open `http://<your-pi-ip>:5555` and follow the wizard.
 
 ## How to Deploy
 
@@ -60,7 +39,7 @@ keepalived:
 
 1. **Clone the repository** (if not already done):
    ```bash
-   git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
+   git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
    cd rpi-ha-dns-stack
    ```
 

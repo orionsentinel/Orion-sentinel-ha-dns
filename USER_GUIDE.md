@@ -686,7 +686,7 @@ A: Yes, designed for 24/7 operation. Self-healing handles failures automatically
 - **Deployment Guide**: [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
 
 ### Support Channels
-- **GitHub Issues**: https://github.com/yorgosroussakis/rpi-ha-dns-stack/issues
+- **GitHub Issues**: https://github.com/orionsentinel/Orion-sentinel-ha-dns/issues
 - **Pi-hole Forum**: https://discourse.pi-hole.net/
 - **Docker Forums**: https://forums.docker.com/
 
@@ -745,7 +745,7 @@ Print this for easy reference:
 ║ View Logs:     docker logs pihole_primary                 ║
 ║ Restart:       docker compose restart                     ║
 ║                                                            ║
-║ Support:       github.com/yorgosroussakis/rpi-ha-dns-stack║
+║ Support:       github.com/orionsentinel/Orion-sentinel-ha-dns║
 ╚════════════════════════════════════════════════════════════╝
 ```
 

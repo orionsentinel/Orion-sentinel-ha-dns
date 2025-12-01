@@ -990,7 +990,7 @@ groups:
 
 ## Resources
 
-- **This Repo:** [Orion Sentinel DNS HA](https://github.com/yorgosroussakis/rpi-ha-dns-stack)
+- **This Repo:** [Orion Sentinel DNS HA](https://github.com/orionsentinel/Orion-sentinel-ha-dns)
 - **NSM/AI Repo:** Create `orion-sentinel-nsm-ai` repository
 - **Pi-hole API Docs:** https://docs.pi-hole.net/
 - **Loki Docs:** https://grafana.com/docs/loki/

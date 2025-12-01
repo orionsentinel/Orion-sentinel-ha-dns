@@ -1,61 +1,15 @@
 # Installation Steps - Quick Reference
 
-**Last Updated**: November 23, 2025  
-**Version**: 2.4.0
+> **📌 This page redirects to the main installation guide.**
+
+For installation instructions, please see:
+
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** — Quick start guide (recommended)
+- **[INSTALL.md](INSTALL.md)** — Comprehensive installation reference
 
 ---
 
-## ⚡ Quick Installation (Most Users)
-
-```bash
-# 1. Clone repository
-git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
-cd Orion-sentinel-ha-dns
-
-# 2. Verify system is ready
-bash scripts/verify-installation.sh
-
-# 3. Run installation
-bash install.sh
-
-# 4. Open web wizard
-# Navigate to: http://<your-pi-ip>:5555
-```
-
-**That's it!** The web wizard will guide you through the rest.
-
----
-
-## 📋 Prerequisites Checklist
-
-Before you begin, ensure you have:
-
-### Hardware
-- [ ] Raspberry Pi 4/5 (4GB+ RAM recommended)
-- [ ] 32GB+ SD card or SSD
-- [ ] Stable 3A+ power supply
-- [ ] Ethernet connection (recommended)
-
-### Network Planning
-- [ ] Static IP address assigned to your Pi
-- [ ] Available IP addresses for:
-  - Primary DNS (e.g., 192.168.8.251)
-  - Secondary DNS (e.g., 192.168.8.252)
-  - VIP (e.g., 192.168.8.255)
-- [ ] Know your network's subnet and gateway
-
-### Software (Auto-installed if missing)
-- [ ] Raspberry Pi OS (64-bit) or Linux
-- [ ] Docker (20.10+)
-- [ ] Docker Compose (v2.0+)
-
----
-
-## 🎯 Installation Methods
-
-### Option 1: Automated Web Setup (Easiest)
-
-**Best for**: First-time users, beginners
+## ⚡ Quick Installation
 
 ```bash
 git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
@@ -63,50 +17,19 @@ cd Orion-sentinel-ha-dns
 bash install.sh
 ```
 
-Then visit: `http://<your-pi-ip>:5555`
-
-**Time**: ~10-15 minutes
+Then open `http://<your-pi-ip>:5555` and follow the wizard.
 
 ---
 
-### Option 2: Interactive CLI Setup (Power Users)
+## Installation Methods
 
-**Best for**: Users comfortable with terminal
+| Method | Command | Best For |
+|--------|---------|----------|
+| **Web Wizard** | `bash install.sh` | Everyone (recommended) |
+| **CLI Interactive** | `bash scripts/cli-install.sh` | Terminal users |
+| **Manual** | Edit `.env` + `docker compose up` | Advanced users |
 
-```bash
-git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
-cd Orion-sentinel-ha-dns
-bash scripts/install.sh
-```
-
-Follow the prompts to configure your installation.
-
-**Time**: ~15-20 minutes
-
----
-
-### Option 3: Manual Configuration (Advanced)
-
-**Best for**: Advanced users wanting full control
-
-```bash
-# 1. Clone
-git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
-cd Orion-sentinel-ha-dns
-
-# 2. Configure
-cp .env.example .env
-nano .env  # Edit all settings
-
-# 3. Install
-bash scripts/install.sh
-
-# 4. Deploy
-cd stacks/dns
-docker compose --profile single-pi-ha up -d
-```
-
-**Time**: ~20-30 minutes
+See **[INSTALL.md](INSTALL.md)** for detailed instructions on each method.
 
 ---
 

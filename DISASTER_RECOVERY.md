@@ -121,7 +121,7 @@ docker exec pihole_primary pihole -a -t
 2. Boot and configure basic network
 3. Clone repository:
    ```bash
-   git clone https://github.com/yorgosroussakis/rpi-ha-dns-stack.git
+   git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
    cd rpi-ha-dns-stack
    ```
 4. Restore `.env` files from backup:

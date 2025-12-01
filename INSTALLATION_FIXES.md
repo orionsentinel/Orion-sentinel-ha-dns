@@ -239,7 +239,7 @@ If you continue to experience issues:
 2. Review [QUICKSTART.md](QUICKSTART.md)
 3. Enable verbose mode: `bash scripts/easy-install.sh --verbose`
 4. Check logs: `cat install.log`
-5. Report at: https://github.com/yorgosroussakis/rpi-ha-dns-stack/issues
+5. Report at: https://github.com/orionsentinel/Orion-sentinel-ha-dns/issues
 
 ---
 

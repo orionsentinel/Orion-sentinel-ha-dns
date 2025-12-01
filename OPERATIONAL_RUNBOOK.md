@@ -210,7 +210,7 @@ docker logs prometheus --since 7d | grep ERROR
 - Docker Docs: https://docs.docker.com/
 
 ### Support
-- GitHub Issues: https://github.com/yorgosroussakis/rpi-ha-dns-stack/issues
+- GitHub Issues: https://github.com/orionsentinel/Orion-sentinel-ha-dns/issues
 - Community: [Your community link]
 
 ---
