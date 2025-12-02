@@ -18,7 +18,14 @@
 #
 # =============================================================================
 
-set -uo pipefail
+set -euo pipefail
+
+# Container name constants
+readonly PIHOLE_PRIMARY="pihole_primary"
+readonly PIHOLE_SECONDARY="pihole_secondary"
+readonly UNBOUND_PRIMARY="unbound_primary"
+readonly UNBOUND_SECONDARY="unbound_secondary"
+readonly KEEPALIVED="keepalived"
 
 # Colors
 RED='\033[0;31m'
@@ -135,12 +142,12 @@ check_containers() {
     
     # Determine which containers should be running based on node role
     if [[ "$NODE_ROLE" == "primary" ]]; then
-        EXPECTED_CONTAINERS=("pihole_primary" "unbound_primary" "keepalived")
+        EXPECTED_CONTAINERS=("$PIHOLE_PRIMARY" "$UNBOUND_PRIMARY" "$KEEPALIVED")
     elif [[ "$NODE_ROLE" == "secondary" ]]; then
-        EXPECTED_CONTAINERS=("pihole_secondary" "unbound_secondary" "keepalived")
+        EXPECTED_CONTAINERS=("$PIHOLE_SECONDARY" "$UNBOUND_SECONDARY" "$KEEPALIVED")
     else
         # Unknown role, check all possible containers
-        EXPECTED_CONTAINERS=("pihole_primary" "pihole_secondary" "unbound_primary" "unbound_secondary" "keepalived")
+        EXPECTED_CONTAINERS=("$PIHOLE_PRIMARY" "$PIHOLE_SECONDARY" "$UNBOUND_PRIMARY" "$UNBOUND_SECONDARY" "$KEEPALIVED")
     fi
     
     for container in "${EXPECTED_CONTAINERS[@]}"; do
@@ -164,10 +171,10 @@ check_containers() {
                 status=2
             else
                 # Container doesn't exist - might be expected on this node
-                if [[ "$NODE_ROLE" == "primary" && ("$container" == "pihole_secondary" || "$container" == "unbound_secondary") ]]; then
+                if [[ "$NODE_ROLE" == "primary" && ("$container" == "$PIHOLE_SECONDARY" || "$container" == "$UNBOUND_SECONDARY") ]]; then
                     # Not expected on primary
                     continue
-                elif [[ "$NODE_ROLE" == "secondary" && ("$container" == "pihole_primary" || "$container" == "unbound_primary") ]]; then
+                elif [[ "$NODE_ROLE" == "secondary" && ("$container" == "$PIHOLE_PRIMARY" || "$container" == "$UNBOUND_PRIMARY") ]]; then
                     # Not expected on secondary
                     continue
                 else
@@ -197,9 +204,9 @@ check_vip() {
         log_green "VIP $VIP_ADDRESS is assigned to this node ($NETWORK_INTERFACE)"
         
         # Check keepalived state
-        if docker logs keepalived 2>/dev/null | tail -20 | grep -q "Entering MASTER STATE"; then
+        if docker logs "$KEEPALIVED" 2>/dev/null | tail -20 | grep -q "Entering MASTER STATE"; then
             log_green "Keepalived is in MASTER state"
-        elif docker logs keepalived 2>/dev/null | tail -20 | grep -q "Entering BACKUP STATE"; then
+        elif docker logs "$KEEPALIVED" 2>/dev/null | tail -20 | grep -q "Entering BACKUP STATE"; then
             log_yellow "Keepalived recently transitioned to BACKUP state (VIP may be stale)"
         fi
         return 0
@@ -209,7 +216,7 @@ check_vip() {
             log_info "VIP is not on this node (expected for BACKUP/secondary)"
             
             # Verify keepalived is in BACKUP state
-            if docker logs keepalived 2>/dev/null | tail -20 | grep -q "Entering BACKUP STATE"; then
+            if docker logs "$KEEPALIVED" 2>/dev/null | tail -20 | grep -q "Entering BACKUP STATE"; then
                 log_green "Keepalived is in BACKUP state (as expected)"
                 return 0
             else
@@ -279,13 +286,13 @@ check_dns_resolution() {
 check_keepalived() {
     section "5. Keepalived Health"
     
-    if ! docker ps --format '{{.Names}}' | grep -q "^keepalived$"; then
+    if ! docker ps --format '{{.Names}}' | grep -q "^${KEEPALIVED}$"; then
         log_red "Keepalived container is not running"
         return 2
     fi
     
     # Check if keepalived process is running inside container
-    if docker exec keepalived pgrep keepalived &> /dev/null; then
+    if docker exec "$KEEPALIVED" pgrep keepalived &> /dev/null; then
         log_green "Keepalived process is running"
     else
         log_red "Keepalived process is not running in container"
@@ -293,7 +300,7 @@ check_keepalived() {
     fi
     
     # Check for recent errors in logs
-    local recent_errors=$(docker logs --since 5m keepalived 2>&1 | grep -i "error\|failed\|fault" | wc -l)
+    local recent_errors=$(docker logs --since 5m "$KEEPALIVED" 2>&1 | grep -i "error\|failed\|fault" | wc -l)
     if [[ $recent_errors -gt 0 ]]; then
         log_yellow "Keepalived has $recent_errors error(s) in last 5 minutes"
         return 1

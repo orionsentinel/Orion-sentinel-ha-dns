@@ -26,6 +26,10 @@ import bcrypt  # For secure password hashing
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
+# Constants
+VALID_NODE_ROLES = ['primary', 'secondary']
+VALID_DEPLOYMENT_MODES = ['single', 'ha']
+
 # Paths
 REPO_ROOT = Path(__file__).parent.parent.absolute()
 ENV_FILE = REPO_ROOT / "stacks" / "dns" / ".env"
@@ -172,7 +176,7 @@ def api_network():
         
         # Validate input
         mode = data.get('mode')
-        if mode not in ['single', 'ha']:
+        if mode not in VALID_DEPLOYMENT_MODES:
             return jsonify({'success': False, 'error': 'Invalid mode'}), 400
         
         pi_ip = data.get('pi_ip', '').strip()
@@ -198,7 +202,7 @@ def api_network():
             # Single-node: VIP = Pi IP, single-pi-ha profile
             config['DEPLOYMENT_MODE'] = 'single-pi-ha'
             config['VIP_ADDRESS'] = pi_ip
-            config['NODE_ROLE'] = 'primary'
+            config['NODE_ROLE'] = VALID_NODE_ROLES[0]  # 'primary'
             config['KEEPALIVED_PRIORITY'] = '100'
         else:
             # Two-Pi HA mode
@@ -211,7 +215,7 @@ def api_network():
                 return jsonify({'success': False, 'error': 'Peer IP is required for Two-Pi HA mode'}), 400
             
             node_role = data.get('node_role', '').strip().lower()
-            if node_role not in ['primary', 'secondary']:
+            if node_role not in VALID_NODE_ROLES:
                 return jsonify({'success': False, 'error': 'Invalid node role'}), 400
             
             vrrp_password = data.get('vrrp_password', '').strip()
@@ -226,10 +230,10 @@ def api_network():
             config['VRRP_PASSWORD'] = vrrp_password
             
             # Set priority based on role
-            if node_role == 'primary':
+            if node_role == VALID_NODE_ROLES[0]:  # 'primary'
                 config['KEEPALIVED_PRIORITY'] = '200'
                 config['NODE_HOSTNAME'] = 'pi1-dns'
-            else:
+            else:  # 'secondary'
                 config['KEEPALIVED_PRIORITY'] = '150'
                 config['NODE_HOSTNAME'] = 'pi2-dns'
         
