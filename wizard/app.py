@@ -367,5 +367,5 @@ def api_reapply_profile():
 
 
 if __name__ == '__main__':
-    # Run on all interfaces, port 8080 (as specified in requirements)
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    # Run on all interfaces, port 5555 for consistency
+    app.run(host='0.0.0.0', port=5555, debug=False)

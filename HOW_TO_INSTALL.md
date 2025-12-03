@@ -1,10 +1,11 @@
 # How to Install Orion Sentinel DNS HA
 
-> **📌 This page redirects to the main installation guide.**
+> **📌 For the easiest installation experience, see [SIMPLE_INSTALLATION_GUIDE.md](SIMPLE_INSTALLATION_GUIDE.md)**
 
 For installation instructions, please see:
 
-- **[GETTING_STARTED.md](GETTING_STARTED.md)** — Quick start guide (recommended)
+- **[SIMPLE_INSTALLATION_GUIDE.md](SIMPLE_INSTALLATION_GUIDE.md)** — Simple step-by-step guide ⭐ **START HERE**
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** — Quick start guide
 - **[INSTALL.md](INSTALL.md)** — Comprehensive installation reference
 
 ---

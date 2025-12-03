@@ -31,7 +31,7 @@ Built with Flask for simplicity and minimal dependencies.
 
 2. **Access the wizard** in your browser:
    ```
-   http://<your-pi-ip>:8080
+   http://<your-pi-ip>:5555
    ```
 
 3. **Follow the 3-step wizard:**
@@ -49,7 +49,7 @@ Once setup is complete, the wizard shows a completion page with:
 - Links to Pi-hole and Grafana interfaces
 - Option to re-apply DNS profiles
 
-Access: `http://<your-pi-ip>:8080`
+Access: `http://<your-pi-ip>:5555`
 
 ### Re-Running the Wizard
 
@@ -144,7 +144,7 @@ pip3 install -r requirements.txt
 # Run the app
 python3 app.py
 
-# Access at http://localhost:8080
+# Access at http://localhost:5555
 ```
 
 ### Building the Docker Image
@@ -167,13 +167,13 @@ The wizard is automatically included in `stacks/dns/docker-compose.yml`:
 
 ```bash
 # Start just the wizard
-docker compose -f stacks/dns/docker-compose.yml up -d dns-wizard
+docker compose -f wizard/docker-compose.yml up -d
 
 # View logs
-docker logs -f dns-wizard
+docker logs -f rpi-dns-setup-ui
 
 # Stop the wizard
-docker compose -f stacks/dns/docker-compose.yml stop dns-wizard
+docker compose -f wizard/docker-compose.yml down
 ```
 
 ## Troubleshooting
@@ -182,27 +182,28 @@ docker compose -f stacks/dns/docker-compose.yml stop dns-wizard
 
 **Check if running:**
 ```bash
-docker ps | grep dns-wizard
+docker ps | grep rpi-dns-setup-ui
 ```
 
 **Start if not running:**
 ```bash
-docker compose -f stacks/dns/docker-compose.yml up -d dns-wizard
+cd wizard
+docker compose up -d
 ```
 
 **Check logs:**
 ```bash
-docker logs dns-wizard
+docker logs rpi-dns-setup-ui
 ```
 
-### Port 8080 Already in Use
+### Port 5555 Already in Use
 
-Edit `stacks/dns/docker-compose.yml` and change the port:
+Edit `wizard/docker-compose.yml` and change the port:
 
 ```yaml
-dns-wizard:
+setup-ui:
   ports:
-    - "8888:8080"  # Changed from 8080:8080
+    - "8888:5555"  # Changed from 5555:5555
 ```
 
 Then access at `http://<pi-ip>:8888`
@@ -222,7 +223,7 @@ chmod 664 stacks/dns/.env
 
 **Check wizard logs for errors:**
 ```bash
-docker logs dns-wizard | grep -i error
+docker logs rpi-dns-setup-ui | grep -i error
 ```
 
 ### "Setup Already Completed" Message
@@ -264,20 +265,17 @@ After initial setup, you can disable the wizard:
 ### Option 1: Stop the Container
 
 ```bash
-docker compose -f stacks/dns/docker-compose.yml stop dns-wizard
+cd wizard
+docker compose down
 ```
 
 ### Option 2: Remove from Compose File
 
-Edit `stacks/dns/docker-compose.yml` and comment out the `dns-wizard` service.
+The wizard runs independently in its own directory, so just don't start it.
 
 ### Option 3: Don't Start It
 
-When deploying, exclude the wizard:
-
-```bash
-docker compose -f stacks/dns/docker-compose.yml up -d pihole_primary pihole_secondary unbound_primary unbound_secondary keepalived
-```
+Simply don't run the wizard commands after initial setup is complete.
 
 ## Contributing
 

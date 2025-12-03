@@ -1,6 +1,7 @@
 # Quick Start Guide 🚀
 
-> **📌 For a complete guide, see [GETTING_STARTED.md](GETTING_STARTED.md)**
+> **📌 New to this project? Start with [SIMPLE_INSTALLATION_GUIDE.md](SIMPLE_INSTALLATION_GUIDE.md)**
+> **📌 For advanced features, see [GETTING_STARTED.md](GETTING_STARTED.md)**
 
 ---
 
