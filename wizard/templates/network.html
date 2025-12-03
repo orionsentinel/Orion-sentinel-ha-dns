@@ -31,28 +31,32 @@
                             <label class="radio-label">
                                 <input type="radio" name="mode" value="single" id="mode-single" checked>
                                 <span class="radio-text">
-                                    <strong>Single-Node</strong>
-                                    <small>One Raspberry Pi - Good for home use</small>
+                                    <strong>Single-Node HA</strong>
+                                    <small>One Raspberry Pi with container-level redundancy</small>
                                 </span>
                             </label>
                             <label class="radio-label">
                                 <input type="radio" name="mode" value="ha" id="mode-ha">
                                 <span class="radio-text">
-                                    <strong>High Availability (HA)</strong>
-                                    <small>Two Raspberry Pis with automatic failover</small>
+                                    <strong>Two-Pi HA</strong>
+                                    <small>Two Raspberry Pis with automatic failover (hardware redundancy)</small>
                                 </span>
                             </label>
                         </div>
                         <p class="help-text">
-                            If you don't know what HA mode is, choose <strong>Single-Node</strong>.
+                            <strong>Single-Node:</strong> Best for most home users. All services run on one Pi with automatic container failover.<br>
+                            <strong>Two-Pi HA:</strong> Maximum availability. Survives complete Pi failure. Requires 2 Raspberry Pis.
                         </p>
                     </div>
 
                     <!-- Pi IP Address -->
                     <div class="form-group">
-                        <label for="pi_ip">Raspberry Pi IP Address</label>
+                        <label for="pi_ip">This Raspberry Pi's IP Address</label>
                         <input type="text" id="pi_ip" name="pi_ip" value="{{ detected_ip }}" required>
-                        <p class="help-text">The static IP address of this Raspberry Pi on your LAN</p>
+                        <p class="help-text">
+                            The static IP address of <strong>THIS</strong> Raspberry Pi on your LAN.<br>
+                            <strong>Two-Pi HA:</strong> Pi1=192.168.8.11, Pi2=192.168.8.12 (example)
+                        </p>
                     </div>
 
                     <!-- Network Interface -->
@@ -64,23 +68,58 @@
 
                     <!-- HA Mode Fields (hidden by default) -->
                     <div id="ha-fields" style="display: none;">
+                        <div class="alert alert-info">
+                            <strong>📋 Two-Pi HA Setup:</strong> You'll configure this wizard on BOTH Raspberry Pis separately.
+                            <ul>
+                                <li>On <strong>Pi1</strong>: Set Node Role to <strong>Primary</strong>, enter Pi1's IP</li>
+                                <li>On <strong>Pi2</strong>: Set Node Role to <strong>Secondary</strong>, enter Pi2's IP</li>
+                                <li>Use the <strong>same VIP and passwords</strong> on both Pis!</li>
+                            </ul>
+                        </div>
+
                         <div class="form-group">
-                            <label for="vip">Virtual IP (VIP)</label>
-                            <input type="text" id="vip" name="vip" placeholder="e.g., 192.168.1.100">
+                            <label for="vip">Virtual IP (VIP) Address</label>
+                            <input type="text" id="vip" name="vip" placeholder="e.g., 192.168.8.249">
                             <p class="help-text">
-                                The shared IP address that will float between your two Pis.
-                                Make sure this IP is not used by any other device!
+                                The shared "floating" IP that moves between Pis during failover.<br>
+                                <strong>Requirements:</strong>
+                                <ul>
+                                    <li>Must be in the same subnet as your Pis</li>
+                                    <li>Must NOT be in your router's DHCP range</li>
+                                    <li>Must NOT be .0 (network) or .255 (broadcast)</li>
+                                    <li>Must be SAME on both Pi1 and Pi2</li>
+                                </ul>
+                                All LAN clients will use ONLY this IP for DNS.
+                            </p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="peer_ip">Peer Node IP Address</label>
+                            <input type="text" id="peer_ip" name="peer_ip" placeholder="e.g., 192.168.8.12">
+                            <p class="help-text">
+                                The IP address of the OTHER Raspberry Pi.<br>
+                                On <strong>Pi1</strong>, enter Pi2's IP. On <strong>Pi2</strong>, enter Pi1's IP.
                             </p>
                         </div>
 
                         <div class="form-group">
                             <label for="node_role">Node Role</label>
                             <select id="node_role" name="node_role">
-                                <option value="MASTER">MASTER (Primary)</option>
-                                <option value="BACKUP">BACKUP (Secondary)</option>
+                                <option value="primary">Primary (Pi1) - Preferred MASTER</option>
+                                <option value="secondary">Secondary (Pi2) - BACKUP</option>
                             </select>
                             <p class="help-text">
-                                Choose MASTER for the first Pi, BACKUP for the second Pi
+                                <strong>Primary:</strong> This Pi will normally own the VIP (higher priority = 200)<br>
+                                <strong>Secondary:</strong> Takes over VIP when Primary fails (lower priority = 150)
+                            </p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vrrp_password">VRRP Authentication Password</label>
+                            <input type="password" id="vrrp_password" name="vrrp_password" minlength="8">
+                            <p class="help-text">
+                                Password for VRRP communication between nodes (minimum 8 characters).<br>
+                                <strong>CRITICAL:</strong> Must be the SAME on both Pi1 and Pi2!
                             </p>
                         </div>
                     </div>
@@ -113,13 +152,19 @@
             radio.addEventListener('change', function() {
                 const haFields = document.getElementById('ha-fields');
                 const vipInput = document.getElementById('vip');
+                const peerIpInput = document.getElementById('peer_ip');
+                const vrrpPasswordInput = document.getElementById('vrrp_password');
                 
                 if (this.value === 'ha') {
                     haFields.style.display = 'block';
                     vipInput.required = true;
+                    peerIpInput.required = true;
+                    vrrpPasswordInput.required = true;
                 } else {
                     haFields.style.display = 'none';
                     vipInput.required = false;
+                    peerIpInput.required = false;
+                    vrrpPasswordInput.required = false;
                 }
             });
         });
@@ -139,7 +184,9 @@
             // Add HA fields if in HA mode
             if (data.mode === 'ha') {
                 data.vip = formData.get('vip');
+                data.peer_ip = formData.get('peer_ip');
                 data.node_role = formData.get('node_role');
+                data.vrrp_password = formData.get('vrrp_password');
             }
             
             // Hide previous errors

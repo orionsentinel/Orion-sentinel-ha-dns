@@ -1,7 +1,500 @@
-# Multi-Node HA Setup - Quick Reference
+# Two-Pi HA Deployment - Quick Start Guide
 
-## Overview
-This repository now includes comprehensive documentation and configuration for deploying a true High Availability (HA) DNS solution across **two physical Raspberry Pi nodes** instead of a single-node setup.
+## 🎯 Overview
+Deploy **true high availability DNS** across two Raspberry Pi nodes with automatic failover. When one Pi fails, the other takes over within 10 seconds — zero client configuration required.
+
+## ✨ What You Get
+- **Hardware-level redundancy**: Survives complete Pi failure, SD card failure, power loss
+- **Automatic failover**: VIP moves to healthy node via Keepalived + VRRP
+- **Zero client config**: All LAN devices use a single VIP for DNS
+- **Synchronized configuration**: Pi-hole settings sync automatically between nodes
+- **Simple management**: Same Docker Compose file on both nodes, minimal per-node differences
+
+---
+
+## 📋 Two-Pi HA Quick Start (30 Minutes)
+
+### Prerequisites
+- **2x Raspberry Pi** (Pi 4/5, 4GB+ RAM recommended)
+- **Static IP addresses** set for both Pis on your router
+- **Same LAN subnet** (e.g., 192.168.8.0/24)
+- **SSH access** to both Pis
+- **Basic Linux knowledge**
+
+### Architecture
+```
+┌─────────────────────┐         ┌─────────────────────┐
+│   Pi1 (Primary)     │         │   Pi2 (Secondary)   │
+│   192.168.8.11      │◄───────►│   192.168.8.12      │
+│                     │  VRRP   │                     │
+│ ┌─────────────────┐ │         │ ┌─────────────────┐ │
+│ │ Pi-hole         │ │         │ │ Pi-hole         │ │
+│ │ Unbound         │ │         │ │ Unbound         │ │
+│ │ Keepalived      │ │         │ │ Keepalived      │ │
+│ │   [MASTER]      │ │         │ │   [BACKUP]      │ │
+│ └─────────────────┘ │         │ └─────────────────┘ │
+│                     │         │                     │
+│  VIP: 192.168.8.249 │         │                     │
+│       ▲             │         │       ▲             │
+└───────┼─────────────┘         └───────┼─────────────┘
+        │                               │
+        └───────────┬───────────────────┘
+                    │
+            ┌───────▼────────┐
+            │  LAN Clients   │
+            │  Use VIP Only  │
+            │  .249 for DNS  │
+            └────────────────┘
+```
+
+---
+
+### Step 1: Prepare Both Raspberry Pis (10 min)
+
+On **both Pi1 and Pi2**:
+
+```bash
+# Update system
+sudo apt-get update && sudo apt-get upgrade -y
+
+# Install Docker if not present
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER
+
+# Install Docker Compose plugin
+sudo apt-get install -y docker-compose-plugin
+
+# Clone repository to /opt/Orion-sentinel-ha-dns
+sudo mkdir -p /opt
+cd /opt
+sudo git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
+sudo chown -R $USER:$USER Orion-sentinel-ha-dns
+cd Orion-sentinel-ha-dns
+```
+
+**Verify static IPs** are set on your router:
+- Pi1: `192.168.8.11` (example)
+- Pi2: `192.168.8.12` (example)
+- VIP: `192.168.8.249` (must NOT be in DHCP range)
+
+---
+
+### Step 2: Configure Pi1 (Primary) (5 min)
+
+On **Pi1** only:
+
+```bash
+cd /opt/Orion-sentinel-ha-dns
+
+# Copy example .env
+cp .env.multinode.example .env
+
+# Edit .env for Pi1
+nano .env
+```
+
+**Edit these settings for Pi1:**
+```bash
+# THIS NODE SETTINGS - EDIT FOR PI1
+NODE_ROLE=primary
+HOST_IP=192.168.8.11
+NODE_HOSTNAME=pi1-dns
+
+# PEER NODE SETTINGS
+PI1_IP=192.168.8.11
+PI2_IP=192.168.8.12
+PEER_IP=192.168.8.12          # Points to Pi2
+
+# VIP CONFIGURATION
+VIP_ADDRESS=192.168.8.249      # Same on both
+
+# KEEPALIVED - PI1 HAS HIGHER PRIORITY
+KEEPALIVED_PRIORITY=200        # Higher = preferred MASTER
+
+# SECURITY - CHANGE THESE!
+VRRP_PASSWORD=YourSecureVRRPPassword123!
+PIHOLE_PASSWORD=YourSecurePiholePassword123!
+
+# MONITORING - Enable on Pi1 only
+DEPLOY_MONITORING=true
+```
+
+Save and exit (Ctrl+X, Y, Enter).
+
+---
+
+### Step 3: Configure Pi2 (Secondary) (5 min)
+
+On **Pi2** only:
+
+```bash
+cd /opt/Orion-sentinel-ha-dns
+
+# Copy example .env
+cp .env.multinode.example .env
+
+# Edit .env for Pi2
+nano .env
+```
+
+**Edit these settings for Pi2:**
+```bash
+# THIS NODE SETTINGS - EDIT FOR PI2
+NODE_ROLE=secondary
+HOST_IP=192.168.8.12           # Different from Pi1!
+NODE_HOSTNAME=pi2-dns
+
+# PEER NODE SETTINGS (same as Pi1)
+PI1_IP=192.168.8.11
+PI2_IP=192.168.8.12
+PEER_IP=192.168.8.11           # Points to Pi1
+
+# VIP CONFIGURATION (same as Pi1)
+VIP_ADDRESS=192.168.8.249
+
+# KEEPALIVED - PI2 HAS LOWER PRIORITY
+KEEPALIVED_PRIORITY=150        # Lower = BACKUP node
+
+# SECURITY - MUST BE SAME AS PI1!
+VRRP_PASSWORD=YourSecureVRRPPassword123!    # SAME as Pi1
+PIHOLE_PASSWORD=YourSecurePiholePassword123!  # SAME as Pi1
+
+# MONITORING - Disable on Pi2 to save resources
+DEPLOY_MONITORING=false
+```
+
+Save and exit (Ctrl+X, Y, Enter).
+
+⚠️ **CRITICAL**: `VRRP_PASSWORD` and `PIHOLE_PASSWORD` **must be identical** on both Pis!
+
+---
+
+### Step 4: Deploy Services (5 min)
+
+On **Pi1** (deploy primary services):
+
+```bash
+cd /opt/Orion-sentinel-ha-dns/stacks/dns
+
+# Deploy with two-pi-ha-pi1 profile
+docker compose --profile two-pi-ha-pi1 up -d
+
+# Check status
+docker compose ps
+```
+
+On **Pi2** (deploy secondary services):
+
+```bash
+cd /opt/Orion-sentinel-ha-dns/stacks/dns
+
+# Deploy with two-pi-ha-pi2 profile
+docker compose --profile two-pi-ha-pi2 up -d
+
+# Check status
+docker compose ps
+```
+
+**Expected containers on each Pi:**
+- Pi1: `pihole_primary`, `unbound_primary`, `keepalived`
+- Pi2: `pihole_secondary`, `unbound_secondary`, `keepalived`
+
+---
+
+### Step 5: Verify Deployment (5 min)
+
+#### Check VIP Ownership
+
+On **Pi1**:
+```bash
+# Should show VIP assigned to eth0 (Pi1 is MASTER)
+ip addr show eth0 | grep 192.168.8.249
+```
+
+On **Pi2**:
+```bash
+# Should NOT show VIP (Pi2 is BACKUP)
+ip addr show eth0 | grep 192.168.8.249
+```
+
+Only **Pi1** should have the VIP.
+
+#### Check Keepalived State
+
+On **Pi1**:
+```bash
+docker logs keepalived | tail -20 | grep "MASTER\|BACKUP"
+# Should see: "Entering MASTER STATE"
+```
+
+On **Pi2**:
+```bash
+docker logs keepalived | tail -20 | grep "MASTER\|BACKUP"
+# Should see: "Entering BACKUP STATE"
+```
+
+#### Test DNS Resolution
+
+From **any device on your network**:
+
+```bash
+# Test DNS via VIP
+dig google.com @192.168.8.249
+nslookup google.com 192.168.8.249
+
+# Test Pi-hole admin UI
+# Open in browser: http://192.168.8.249/admin
+```
+
+#### Run Health Check
+
+On **either Pi**:
+```bash
+cd /opt/Orion-sentinel-ha-dns
+bash scripts/orion-dns-ha-health.sh
+
+# Expected output:
+# ✓ Docker daemon is running
+# ✓ pihole_primary is running and healthy
+# ✓ unbound_primary is running and healthy
+# ✓ keepalived is running and healthy
+# ✓ VIP is assigned to this node
+# ✓ DNS resolution working
+# Overall Status: HEALTHY ✓
+```
+
+---
+
+### Step 6: Test Failover (5 min)
+
+This verifies automatic failover works:
+
+#### Test 1: Stop Keepalived on Pi1
+
+On **Pi1**:
+```bash
+docker stop keepalived
+```
+
+**Wait 10 seconds**, then check Pi2:
+
+On **Pi2**:
+```bash
+ip addr show eth0 | grep 192.168.8.249
+# VIP should NOW appear on Pi2 (failover happened)
+
+docker logs keepalived | tail -10
+# Should show: "Entering MASTER STATE"
+```
+
+From **any network device**:
+```bash
+# DNS should still work via VIP
+dig google.com @192.168.8.249
+# ✓ Should resolve (now served by Pi2)
+```
+
+#### Test 2: Restore Pi1 (Failback)
+
+On **Pi1**:
+```bash
+docker start keepalived
+```
+
+**Wait 10 seconds**, then check:
+
+On **Pi1**:
+```bash
+ip addr show eth0 | grep 192.168.8.249
+# VIP should return to Pi1 (failback happened)
+```
+
+On **Pi2**:
+```bash
+ip addr show eth0 | grep 192.168.8.249
+# VIP should disappear from Pi2
+```
+
+✅ **Success!** Automatic failover and failback are working.
+
+---
+
+## 🔧 Post-Deployment Configuration
+
+### Configure LAN Clients to Use VIP
+
+Update **DHCP settings on your router**:
+- **Primary DNS**: `192.168.8.249` (the VIP)
+- **Secondary DNS**: Leave blank or use `1.1.1.1` as ultimate fallback
+
+All clients will now use the VIP for DNS. When Pi1 fails, they automatically fail over to Pi2.
+
+### Access Pi-hole Admin UI
+
+- **Via VIP**: `http://192.168.8.249/admin` (always goes to MASTER node)
+- **Via Pi1 directly**: `http://192.168.8.11/admin`
+- **Via Pi2 directly**: `http://192.168.8.12/admin`
+
+Login with your `PIHOLE_PASSWORD`.
+
+### Set Up Pi-hole Configuration Sync (Optional)
+
+To keep Pi-hole settings synchronized between Pi1 and Pi2:
+
+On **Pi1** (primary):
+```bash
+# Install Gravity Sync
+cd /opt
+git clone https://github.com/vmstan/gravity-sync.git
+cd gravity-sync
+./gs-install.sh
+
+# Configure sync to Pi2
+./gs-config.sh
+```
+
+Follow prompts to set up SSH keys and configure sync to Pi2.
+
+### Enable Signal Notifications (Optional)
+
+Edit `.env` on both Pis:
+```bash
+SIGNAL_NUMBER=+1234567890
+SIGNAL_RECIPIENTS=+1234567890
+NOTIFY_ON_FAILOVER=true
+NOTIFY_ON_FAILBACK=true
+```
+
+Restart services:
+```bash
+docker compose --profile two-pi-ha-pi1 down  # On Pi1
+docker compose --profile two-pi-ha-pi1 up -d
+
+docker compose --profile two-pi-ha-pi2 down  # On Pi2
+docker compose --profile two-pi-ha-pi2 up -d
+```
+
+---
+
+## 🔍 Monitoring & Maintenance
+
+### Daily Health Checks
+
+Run on **either Pi**:
+```bash
+cd /opt/Orion-sentinel-ha-dns
+bash scripts/orion-dns-ha-health.sh
+```
+
+### Check VIP Ownership
+```bash
+# On Pi1
+ip addr show eth0 | grep VIP_ADDRESS
+
+# On Pi2
+ip addr show eth0 | grep VIP_ADDRESS
+```
+
+### View Keepalived Logs
+```bash
+# Recent state changes
+docker logs keepalived | tail -50
+
+# Follow logs in real-time
+docker logs -f keepalived
+```
+
+### Update Services
+
+On **both Pis** (one at a time!):
+```bash
+cd /opt/Orion-sentinel-ha-dns
+git pull
+docker compose pull
+docker compose --profile two-pi-ha-pi1 up -d  # On Pi1
+docker compose --profile two-pi-ha-pi2 up -d  # On Pi2
+```
+
+---
+
+## 🆘 Troubleshooting
+
+### VIP Not Showing on Any Node
+
+**Symptom**: Neither Pi has VIP assigned
+```bash
+# Check VRRP traffic isn't blocked
+sudo tcpdump -i eth0 vrrp
+
+# Check Keepalived logs
+docker logs keepalived
+```
+
+**Solution**: Use unicast VRRP (already set in .env.multinode.example)
+
+### Both Nodes Claim MASTER (Split Brain)
+
+**Symptom**: Both Pis show VIP assigned
+
+**Cause**: Network partition or misconfiguration
+
+**Solution**: 
+1. Check `VIRTUAL_ROUTER_ID` matches on both Pis
+2. Check `VRRP_PASSWORD` matches on both Pis
+3. Verify network connectivity: `ping <other-pi-ip>`
+
+### DNS Not Resolving
+
+**Symptom**: `dig @192.168.8.249 google.com` fails
+
+```bash
+# Check Pi-hole is running
+docker ps | grep pihole
+
+# Check Pi-hole logs
+docker logs pihole_primary  # On Pi1
+docker logs pihole_secondary  # On Pi2
+
+# Test local DNS
+dig @127.0.0.1 google.com
+```
+
+### Sync Not Working
+
+**Symptom**: Changes on Pi1 don't appear on Pi2
+
+**Solution**: Set up Gravity Sync (see Post-Deployment section)
+
+---
+
+## 📊 What's Different from Single-Node?
+
+| Aspect | Single-Node HA | Two-Pi HA |
+|--------|---------------|-----------|
+| Hardware Failure Protection | ❌ No | ✅ Yes |
+| Pi Failure Survives | ❌ No | ✅ Yes |
+| SD Card Failure Survives | ❌ No | ✅ Yes |
+| Power Loss Survives | ❌ No | ✅ Yes (if one Pi down) |
+| Failover Time | <5s (container) | <10s (node) |
+| Complexity | Low | Medium |
+| Cost | 1 Pi | 2 Pis |
+| Management | Simple | Moderate |
+
+---
+
+## 📚 Additional Documentation
+
+For more detailed information, see:
+
+- **[MULTI_NODE_HA_DESIGN.md](./MULTI_NODE_HA_DESIGN.md)** - Complete architecture design
+- **[MULTI_NODE_DEPLOYMENT_CHECKLIST.md](./MULTI_NODE_DEPLOYMENT_CHECKLIST.md)** - Detailed checklist
+- **[MULTI_NODE_INDEX.md](./MULTI_NODE_INDEX.md)** - Documentation index
+
+---
+
+# Original Multi-Node Documentation
+
+The sections below contain the original multi-node exploration documentation.
 
 ## What's New
 This exploration provides everything needed to set up true hardware-level redundancy:

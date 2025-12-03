@@ -4,7 +4,85 @@ Comprehensive health checking system for the Orion Sentinel DNS HA stack.
 
 ## Components
 
-### 1. `health_checker.py`
+### 1. `orion-dns-ha-health.sh` ⭐ NEW
+
+**Comprehensive Two-Pi HA health check wrapper** - The recommended tool for quick health status.
+
+Features:
+- **All-in-one health check**: Docker, containers, VIP ownership, DNS resolution, Keepalived
+- **Multiple output formats**: Human-readable, JSON, quiet mode
+- **Smart status codes**: Green (0), Yellow (1), Red (2) for automation
+- **Node-aware**: Adapts checks based on NODE_ROLE (primary/secondary)
+
+**Usage:**
+
+```bash
+# Run all checks with colored output
+bash scripts/orion-dns-ha-health.sh
+
+# Quiet mode (exit code only)
+bash scripts/orion-dns-ha-health.sh --quiet
+
+# JSON output for automation/monitoring
+bash scripts/orion-dns-ha-health.sh --json
+```
+
+**Exit Codes:**
+- `0` - GREEN: All systems healthy
+- `1` - YELLOW: Degraded but operational (e.g., secondary down, monitoring issues)
+- `2` - RED: Critical failure (VIP missing, DNS not resolving)
+
+**What it checks:**
+1. ✅ Docker daemon is running
+2. ✅ DNS containers are running and healthy (Pi-hole, Unbound, Keepalived)
+3. ✅ VIP ownership status (MASTER vs BACKUP)
+4. ✅ DNS resolution via localhost and VIP
+5. ✅ Keepalived process health and recent errors
+
+**Example output:**
+```
+═══════════════════════════════════════════════════════════
+  Orion DNS HA Health Check
+═══════════════════════════════════════════════════════════
+
+ℹ Node Role: primary
+ℹ VIP Address: 192.168.8.249
+ℹ Interface: eth0
+
+1. Docker Service
+✓ Docker daemon is running
+
+2. DNS Containers
+✓ pihole_primary is running and healthy
+✓ unbound_primary is running and healthy
+✓ keepalived is running and healthy
+
+3. Virtual IP (VIP) Status
+✓ VIP 192.168.8.249 is assigned to this node (eth0)
+✓ Keepalived is in MASTER state
+
+4. DNS Resolution
+✓ Local DNS resolution working (127.0.0.1)
+✓ VIP DNS resolution working (192.168.8.249)
+
+5. Keepalived Health
+✓ Keepalived process is running
+✓ No recent errors in Keepalived logs
+
+═══════════════════════════════════════════════════════════
+  Summary
+═══════════════════════════════════════════════════════════
+
+  Passed:   11 checks
+  Degraded: 0 checks
+  Failed:   0 checks
+
+Overall Status: HEALTHY ✓
+```
+
+---
+
+### 2. `health_checker.py`
 
 Python-based health checker that performs:
 - **Pi-hole API checks**: Verifies both primary and secondary Pi-hole instances are responding

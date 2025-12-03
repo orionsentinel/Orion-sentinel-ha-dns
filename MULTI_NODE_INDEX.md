@@ -1,5 +1,14 @@
 # Multi-Node HA Documentation Index
 
+## 🚀 **NEW: Two-Pi HA Quick Start** ⭐
+
+**Want to get started quickly?** Jump straight to:
+→ **[Two-Pi HA Quick Start Guide](MULTI_NODE_QUICKSTART.md#-two-pi-ha-quick-start-30-minutes)**
+
+This 30-minute guide walks you through deploying true high availability DNS across two Raspberry Pis with automatic failover.
+
+---
+
 Welcome! This index helps you navigate the complete multi-node High Availability DNS setup documentation.
 
 ## 🚀 Start Here
