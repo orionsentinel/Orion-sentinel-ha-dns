@@ -6,6 +6,24 @@ Part of the [Orion Sentinel](docs/ORION_SENTINEL_ARCHITECTURE.md) home lab secur
 
 ---
 
+## 🚀 Installation
+
+**New to this project? Start here:**
+
+### Quick Installation (Recommended)
+```bash
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
+cd Orion-sentinel-ha-dns
+bash install.sh
+```
+Then open `http://<your-pi-ip>:5555` in your browser and follow the web wizard.
+
+### Documentation
+- **[📖 SIMPLE_INSTALLATION_GUIDE.md](SIMPLE_INSTALLATION_GUIDE.md)** - Complete step-by-step guide ⭐ **START HERE**
+- **[🚀 QUICKSTART.md](QUICKSTART.md)** - One-page quick reference
+
+---
+
 ## ⚡ Quick Start
 
 ### Getting Started

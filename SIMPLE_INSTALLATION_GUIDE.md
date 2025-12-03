@@ -35,6 +35,22 @@ This guide provides clear, step-by-step instructions to install the Orion Sentin
 - **Installation**: 15-30 minutes
 - **Configuration**: 10-15 minutes
 
+### Pre-Installation Validation (Optional)
+
+Before installing, you can run a validation script to check prerequisites:
+
+```bash
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
+cd Orion-sentinel-ha-dns
+bash scripts/validate-installation.sh
+```
+
+This will verify:
+- Repository structure is correct
+- All required files are present
+- Scripts have valid syntax
+- Documentation is consistent
+
 ---
 
 ## Installation Methods
