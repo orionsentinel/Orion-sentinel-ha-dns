@@ -6,11 +6,52 @@ Part of the [Orion Sentinel](docs/ORION_SENTINEL_ARCHITECTURE.md) home lab secur
 
 ---
 
-## 🚀 Installation
+## 🆕 NEW: Production-Ready Structure
 
-**New to this project? Start here:**
+**Simplified setup for maximum reliability and minimal maintenance!**
 
-### Quick Installation (Recommended)
+### 🚀 Quick Start (Production Setup)
+
+```bash
+# 1. Clone repository
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
+cd Orion-sentinel-ha-dns
+
+# 2. Bootstrap your Pi(s)
+sudo ./scripts/bootstrap-node.sh --node=pi1 --ip=192.168.8.250
+
+# 3. Configure environment
+cp .env.production.example .env
+nano .env  # Set passwords and IPs
+
+# 4. Deploy!
+make up-core
+```
+
+**That's it!** See [QUICKSTART.production.md](QUICKSTART.production.md) for detailed two-Pi HA setup.
+
+### 📖 Production Documentation
+
+- **[🚀 QUICKSTART.production.md](QUICKSTART.production.md)** - Get running in 10 minutes ⭐ **START HERE**
+- **[📖 README.production.md](README.production.md)** - Complete production guide
+- **[🔄 docs/migration.md](docs/migration.md)** - Migrate from old structure
+- **[📋 PLAN.md](PLAN.md)** - Refactoring plan and design decisions
+
+### Key Features
+
+✅ **Single `compose.yml`** at root - no more multiple deployment folders  
+✅ **`Makefile`** for all operations - `make up-core`, `make health-check`, etc.  
+✅ **Template-based config** - works for both Pi1 and Pi2 with just env vars  
+✅ **Bootstrap script** - automated first-time setup  
+✅ **Profile-based** - deploy only what you need (`dns-core`, `exporters`, etc.)
+
+---
+
+## 🔧 Legacy Installation
+
+**The following methods still work but are being phased out:**
+
+### Quick Installation (Web Wizard)
 ```bash
 git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
 cd Orion-sentinel-ha-dns
@@ -18,8 +59,8 @@ bash install.sh
 ```
 Then open `http://<your-pi-ip>:5555` in your browser and follow the web wizard.
 
-### Documentation
-- **[📖 SIMPLE_INSTALLATION_GUIDE.md](SIMPLE_INSTALLATION_GUIDE.md)** - Complete step-by-step guide ⭐ **START HERE**
+### Documentation (Legacy)
+- **[📖 SIMPLE_INSTALLATION_GUIDE.md](SIMPLE_INSTALLATION_GUIDE.md)** - Complete step-by-step guide
 - **[🚀 QUICKSTART.md](QUICKSTART.md)** - One-page quick reference
 
 ---
