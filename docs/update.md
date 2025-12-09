@@ -222,10 +222,18 @@ services:
 Update `compose.yml` with specific versions:
 
 ```yaml
-# Example version pinning
-pihole/pihole:2024.07.0          # Pi-hole
-mvance/unbound:latest             # Unbound (check for stable tags)
-osixia/keepalived:2.0.20         # Keepalived
+# Example version pinning in compose.yml
+pihole/pihole:2024.07.0           # Pi-hole
+prom/node-exporter:v1.8.2         # Node Exporter
+ekofr/pihole-exporter:v0.4.0      # Pi-hole Exporter
+svaloumas/unbound_exporter:v0.4.6 # Unbound Exporter
+```
+
+For Unbound (which uses a custom Dockerfile), update `config/unbound/Dockerfile`:
+```dockerfile
+# Pin the base image version
+FROM ghcr.io/klutchell/unbound:1.19.0
+# Instead of: FROM ghcr.io/klutchell/unbound:latest
 ```
 
 ## Rollback Procedures

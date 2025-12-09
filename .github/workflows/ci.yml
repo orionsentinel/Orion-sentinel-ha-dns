@@ -78,6 +78,7 @@ jobs:
       - name: Run shellcheck on all scripts
         run: |
           find scripts -name "*.sh" -type f -exec shellcheck --severity=warning {} +
+          find backup -name "*.sh" -type f -exec shellcheck --severity=warning {} +
 
   smoke-test:
     name: Smoke Test - Stack Deployment
