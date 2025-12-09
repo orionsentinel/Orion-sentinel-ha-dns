@@ -1,0 +1,56 @@
+# .dockerignore - Exclude unnecessary files from Docker build context
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+grafana_dashboards/
+
+# Environment files
+.env*
+env/
+
+# Deployment configs
+deployments/
+
+# Backups
+backups/
+
+# Logs
+*.log
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Node
+node_modules/
+
+# Temporary files
+tmp/
+.tmp/
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts not needed in images
+scripts/
+wizard/
+
+# Stacks not needed in build
+stacks/

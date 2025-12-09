@@ -1,0 +1,362 @@
+# Orion Sentinel HA DNS - Production-Ready Docker Compose
+# =========================================================
+#
+# This is the main entrypoint for deploying the HA DNS stack.
+# Use profiles to control which services are deployed:
+#
+# Profiles:
+#   dns-core    - Core DNS services (pihole + unbound + keepalived) - REQUIRED
+#   exporters   - Monitoring exporters (node, pihole, unbound) - OPTIONAL
+#   tools       - Helper containers (dig tester, admin tools) - OPTIONAL
+#
+# Quick Start:
+#   1. Copy .env.example to .env and configure
+#   2. Run: make up-core (or docker compose --profile dns-core up -d)
+#   3. Access Pi-hole at http://<HOST_IP>/admin
+#
+# Two-Pi HA Setup:
+#   - On Pi1: Set HOST_IP=<pi1-ip>, KEEPALIVED_PRIORITY=200, NODE_ROLE=MASTER
+#   - On Pi2: Set HOST_IP=<pi2-ip>, KEEPALIVED_PRIORITY=150, NODE_ROLE=BACKUP
+#   - Both use same VIP_ADDRESS, VRRP_PASSWORD
+#
+# Documentation: README.md, docs/
+
+version: '3.8'
+
+# ==============================================================================
+# COMMON CONFIGURATION ANCHORS
+# Reusable configuration blocks to reduce duplication
+# ==============================================================================
+
+x-pihole-common: &pihole-common
+  image: pihole/pihole:latest
+  restart: unless-stopped
+  environment:
+    TZ: ${TZ:-Europe/London}
+    WEBPASSWORD: ${PIHOLE_PASSWORD:?PIHOLE_PASSWORD must be set in .env}
+    DNSMASQ_LISTENING: all
+    WEBTHEME: ${PIHOLE_THEME:-default-dark}
+    TEMPERATUREUNIT: c
+    WEBUIBOXEDLAYOUT: boxed
+  dns:
+    - 127.0.0.1
+  cap_add:
+    - NET_ADMIN
+  deploy:
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: 512M
+      reservations:
+        cpus: '0.25'
+        memory: 128M
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-unbound-common: &unbound-common
+  build:
+    context: ./config/unbound
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  environment:
+    TZ: ${TZ:-Europe/London}
+    UNBOUND_SMART_PREFETCH: ${UNBOUND_SMART_PREFETCH:-0}
+  deploy:
+    resources:
+      limits:
+        cpus: '0.5'
+        memory: 512M
+      reservations:
+        cpus: '0.1'
+        memory: 64M
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+# ==============================================================================
+# SERVICES
+# ==============================================================================
+
+services:
+
+  # ============================================================================
+  # PIHOLE - Network-wide Ad Blocking
+  # Profile: dns-core (required)
+  # ============================================================================
+  pihole_primary:
+    <<: *pihole-common
+    container_name: pihole_primary
+    hostname: pihole-primary
+    profiles:
+      - dns-core
+    environment:
+      TZ: ${TZ:-Europe/London}
+      WEBPASSWORD: ${PIHOLE_PASSWORD:?PIHOLE_PASSWORD must be set in .env}
+      PIHOLE_DNS_: ${PIHOLE_DNS1:-127.0.0.1#5335}
+      FTLCONF_LOCAL_IPV4: ${HOST_IP}
+      DNSMASQ_LISTENING: all
+      WEBTHEME: ${PIHOLE_THEME:-default-dark}
+    networks:
+      dns_net:
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "80:80/tcp"
+    volumes:
+      - pihole_config:/etc/pihole
+      - pihole_dnsmasq:/etc/dnsmasq.d
+      - ./config/pihole:/config:ro
+    healthcheck:
+      test: ["CMD", "dig", "@127.0.0.1", "-p", "53", "pi.hole", "+short", "+time=2"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      unbound_primary:
+        condition: service_healthy
+
+  # ============================================================================
+  # UNBOUND - Recursive DNS Resolver with DNSSEC
+  # Profile: dns-core (required)
+  # ============================================================================
+  unbound_primary:
+    <<: *unbound-common
+    container_name: unbound_primary
+    hostname: unbound-primary
+    profiles:
+      - dns-core
+    networks:
+      dns_net:
+    volumes:
+      - ./config/unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
+      - unbound_data:/opt/unbound/etc/unbound/var
+    healthcheck:
+      test: ["CMD", "drill", "@127.0.0.1", "-p", "5335", "cloudflare.com", "SOA"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ============================================================================
+  # KEEPALIVED - Virtual IP (VIP) Management for High Availability
+  # Profile: dns-core (required for HA)
+  # 
+  # Purpose: Manages the Virtual IP (VIP) that floats between nodes.
+  # - Monitors Pi-hole and Unbound health
+  # - Automatically fails over to backup node if primary is unhealthy
+  # - Uses VRRP protocol for VIP management
+  # 
+  # Configuration:
+  # - Set KEEPALIVED_PRIORITY higher on preferred MASTER node
+  # - Set same VIP_ADDRESS and VRRP_PASSWORD on both nodes
+  # ============================================================================
+  keepalived:
+    build:
+      context: ./config/keepalived
+      dockerfile: Dockerfile
+    container_name: keepalived
+    hostname: keepalived-${NODE_ROLE:-MASTER}
+    profiles:
+      - dns-core
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_BROADCAST
+      - NET_RAW
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/keepalived/keepalived.conf.tmpl:/etc/keepalived/keepalived.conf.tmpl:ro
+      - ./scripts/check-dns.sh:/etc/keepalived/check_dns.sh:ro
+      - ./scripts/notify-master.sh:/etc/keepalived/notify_master.sh:ro
+      - ./scripts/notify-backup.sh:/etc/keepalived/notify_backup.sh:ro
+      - ./scripts/notify-fault.sh:/etc/keepalived/notify_fault.sh:ro
+    environment:
+      NODE_ROLE: ${NODE_ROLE:-MASTER}
+      KEEPALIVED_PRIORITY: ${KEEPALIVED_PRIORITY:-200}
+      VIP_ADDRESS: ${VIP_ADDRESS:?VIP_ADDRESS must be set in .env}
+      NETWORK_INTERFACE: ${NETWORK_INTERFACE:-eth0}
+      VIRTUAL_ROUTER_ID: ${VIRTUAL_ROUTER_ID:-51}
+      VRRP_PASSWORD: ${VRRP_PASSWORD:?VRRP_PASSWORD must be set in .env}
+      PEER_IP: ${PEER_IP:-}
+      USE_UNICAST_VRRP: ${USE_UNICAST_VRRP:-true}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pgrep", "-x", "keepalived"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # ============================================================================
+  # NODE EXPORTER - System Metrics for Prometheus
+  # Profile: exporters (optional)
+  # 
+  # Exposes system metrics (CPU, memory, disk, network) for monitoring
+  # Access: http://<HOST_IP>:9100/metrics
+  # ============================================================================
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    hostname: node-exporter
+    profiles:
+      - exporters
+    command:
+      - '--path.rootfs=/host'
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - monitoring_net
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro,rslave
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ============================================================================
+  # PIHOLE EXPORTER - Pi-hole Metrics for Prometheus
+  # Profile: exporters (optional)
+  # 
+  # Exposes Pi-hole statistics as Prometheus metrics
+  # Access: http://<HOST_IP>:9617/metrics
+  # ============================================================================
+  pihole_exporter:
+    image: ekofr/pihole-exporter:latest
+    container_name: pihole_exporter
+    hostname: pihole-exporter
+    profiles:
+      - exporters
+    networks:
+      - dns_net
+      - monitoring_net
+    ports:
+      - "9617:9617"
+    environment:
+      PIHOLE_HOSTNAME: pihole_primary
+      PIHOLE_PORT: 80
+      PIHOLE_PASSWORD: ${PIHOLE_PASSWORD}
+      INTERVAL: 30s
+    restart: unless-stopped
+    depends_on:
+      - pihole_primary
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ============================================================================
+  # UNBOUND EXPORTER - Unbound DNS Metrics for Prometheus
+  # Profile: exporters (optional)
+  # 
+  # Exposes Unbound statistics as Prometheus metrics
+  # Access: http://<HOST_IP>:9167/metrics
+  # ============================================================================
+  unbound_exporter:
+    image: svaloumas/unbound_exporter:latest
+    container_name: unbound_exporter
+    hostname: unbound-exporter
+    profiles:
+      - exporters
+    networks:
+      - dns_net
+      - monitoring_net
+    ports:
+      - "9167:9167"
+    environment:
+      UNBOUND_HOST: unbound_primary
+      UNBOUND_PORT: 8953
+    restart: unless-stopped
+    depends_on:
+      - unbound_primary
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+# ==============================================================================
+# NETWORKS
+# ==============================================================================
+
+networks:
+  # DNS network - for Pi-hole and Unbound communication
+  dns_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+  # Monitoring network - for exporters and metrics collection
+  monitoring_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+
+# ==============================================================================
+# VOLUMES
+# ==============================================================================
+
+volumes:
+  # Pi-hole configuration and data
+  pihole_config:
+    driver: local
+  
+  # Pi-hole dnsmasq configuration
+  pihole_dnsmasq:
+    driver: local
+  
+  # Unbound data and cache
+  unbound_data:
+    driver: local
