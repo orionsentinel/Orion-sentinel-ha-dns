@@ -21,8 +21,6 @@
 #
 # Documentation: README.md, docs/
 
-version: '3.8'
-
 # ==============================================================================
 # COMMON CONFIGURATION ANCHORS
 # Reusable configuration blocks to reduce duplication
