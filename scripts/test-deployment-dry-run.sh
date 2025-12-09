@@ -22,10 +22,10 @@
 #
 # =============================================================================
 
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || (cd "$SCRIPT_DIR/.." && pwd))"
 
 # Colors
 RED='\033[0;31m'
@@ -74,17 +74,17 @@ done
 # Logging functions
 log_pass() {
     echo -e "${GREEN}✅ PASS${NC} $*"
-    ((TESTS_PASSED++))
+    ((TESTS_PASSED++)) || true
 }
 
 log_fail() {
     echo -e "${RED}❌ FAIL${NC} $*"
-    ((TESTS_FAILED++))
+    ((TESTS_FAILED++)) || true
 }
 
 log_warn() {
     echo -e "${YELLOW}⚠️  WARN${NC} $*"
-    ((TESTS_WARNED++))
+    ((TESTS_WARNED++)) || true
 }
 
 log_info() {
