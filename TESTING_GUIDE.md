@@ -399,6 +399,28 @@ Validate HA failover between two Pis.
 
 ## Regression Tests
 
+### Quick Deployment Validation (NEW)
+
+Before deploying, run the comprehensive deployment dry-run test:
+
+```bash
+# Full deployment dry-run validation
+bash scripts/test-deployment-dry-run.sh --verbose
+
+# Run all test suites
+bash scripts/test-installation.sh
+bash scripts/test-suite.sh
+bash scripts/pre-flight-check.sh --quick
+```
+
+These scripts validate:
+- Docker Compose configuration syntax
+- Build contexts and Dockerfiles
+- Environment variable completeness
+- Network configuration
+- Volume mounts and file dependencies
+- Script syntax and permissions
+
 ### Test existing functionality still works
 
 1. **Verify existing stacks still deploy:**

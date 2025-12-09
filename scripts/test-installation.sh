@@ -295,11 +295,12 @@ test_script_permissions() {
 test_critical_bugs_fixed() {
     section "Test 10: Critical Bugs Verification"
     
-    # Bug 1: REPO_ROOT syntax in scripts/install.sh
-    if grep -q 'REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE\[0\]}")/.." && pwd)"' "$REPO_ROOT/scripts/install.sh"; then
-        pass_test "Bug #1 fixed: REPO_ROOT syntax in scripts/install.sh"
+    # Bug 1: REPO_ROOT must be set correctly in scripts/install.sh
+    # Now uses git rev-parse with fallback to cd-based approach for robustness
+    if grep -q 'REPO_ROOT=.*git rev-parse\|REPO_ROOT=.*dirname.*BASH_SOURCE' "$REPO_ROOT/scripts/install.sh"; then
+        pass_test "Bug #1 fixed: REPO_ROOT detection in scripts/install.sh"
     else
-        fail_test "Bug #1 NOT fixed: REPO_ROOT syntax error in scripts/install.sh"
+        fail_test "Bug #1 NOT fixed: REPO_ROOT detection missing in scripts/install.sh"
     fi
     
     # Bug 2: Validation before calling launch-setup-ui.sh
@@ -310,7 +311,7 @@ test_critical_bugs_fixed() {
     fi
     
     # Bug 4: Docker verification
-    if grep -q "docker.*running\|docker.*operational" "$REPO_ROOT/scripts/install.sh"; then
+    if grep -q "docker.*running\|docker.*accessible\|docker version" "$REPO_ROOT/scripts/install.sh"; then
         pass_test "Bug #4 fixed: Docker runtime verification added"
     else
         warn "Bug #4: Docker runtime verification may need improvement"

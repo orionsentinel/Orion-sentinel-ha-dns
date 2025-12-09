@@ -3,7 +3,7 @@
 # Compatible with Pi-hole v6's new database structure
 # Syncs configuration between Pi-hole instances without Gravity Sync
 
-set -u
+set -eu
 
 # Configuration
 PIHOLE_PRIMARY="${PIHOLE_PRIMARY:-pihole_primary}"

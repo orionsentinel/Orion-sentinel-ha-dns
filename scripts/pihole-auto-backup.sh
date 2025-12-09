@@ -2,7 +2,7 @@
 # Automated Pi-hole Backup Script
 # Creates timestamped backups and maintains rotation
 
-set -u
+set -eu
 
 # Configuration
 BACKUP_DIR="${BACKUP_DIR:-/backup}"

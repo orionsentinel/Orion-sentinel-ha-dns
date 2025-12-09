@@ -2,7 +2,7 @@
 # Complete Self-Healing System
 # Monitors and automatically recovers from ALL failure scenarios
 
-set -u
+set -eu
 
 # Configuration
 CHECK_INTERVAL="${CHECK_INTERVAL:-60}"
