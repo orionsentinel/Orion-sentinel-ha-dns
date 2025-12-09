@@ -94,6 +94,13 @@ Then open `http://<your-pi-ip>:5555` in your browser and follow the web wizard.
 - **[👤 USER_GUIDE.md](USER_GUIDE.md)** - How to use and maintain the stack
 - **[⚙️ Operations Guide](docs/operations.md)** - Backup, restore, and upgrade procedures ⭐ NEW
 - **[🔒 Hardening Guide](docs/hardening.md)** - Security best practices and deployment hardening ⭐ NEW
+- **[🔄 Update Guide](docs/update.md)** - How to update images and configurations ⭐ NEW
+
+### Backup & Restore
+- **[💾 Backup Scripts](backup/README.md)** - Automated volume backups ⭐ NEW
+  - `sudo ./backup/backup-volumes.sh` - Backup all critical volumes
+  - `sudo ./backup/restore-volume.sh <backup-file>` - Restore from backup
+  - Weekly backups recommended: `0 2 * * 0 /path/to/backup/backup-volumes.sh`
 
 ### Phase 2 Features (Production Enhancements) ⭐ NEW
 - **[🏥 Health & HA Guide](docs/health-and-ha.md)** - Health checking and failover

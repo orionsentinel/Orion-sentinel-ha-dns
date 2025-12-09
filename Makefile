@@ -93,6 +93,8 @@ health-check: ## Run comprehensive health check
 
 test: health-check ## Run health check (alias)
 
+health: health-check ## Run health check (standardized alias)
+
 ps: ## Show running containers
 	@docker compose ps
 

@@ -29,7 +29,7 @@ version: '3.8'
 # ==============================================================================
 
 x-pihole-common: &pihole-common
-  image: pihole/pihole:latest
+  image: pihole/pihole:2024.07.0
   restart: unless-stopped
   environment:
     TZ: ${TZ:-Europe/London}
@@ -214,7 +214,7 @@ services:
   # Access: http://<HOST_IP>:9100/metrics
   # ============================================================================
   node_exporter:
-    image: prom/node-exporter:latest
+    image: prom/node-exporter:v1.8.2
     container_name: node_exporter
     hostname: node-exporter
     profiles:
@@ -255,7 +255,7 @@ services:
   # Access: http://<HOST_IP>:9617/metrics
   # ============================================================================
   pihole_exporter:
-    image: ekofr/pihole-exporter:latest
+    image: ekofr/pihole-exporter:v0.4.0
     container_name: pihole_exporter
     hostname: pihole-exporter
     profiles:
@@ -295,7 +295,7 @@ services:
   # Access: http://<HOST_IP>:9167/metrics
   # ============================================================================
   unbound_exporter:
-    image: svaloumas/unbound_exporter:latest
+    image: svaloumas/unbound_exporter:v0.4.6
     container_name: unbound_exporter
     hostname: unbound-exporter
     profiles:

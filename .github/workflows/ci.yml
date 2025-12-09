@@ -1,0 +1,160 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  docker-compose-validation:
+    name: Validate Docker Compose Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate main compose.yml
+        run: docker compose -f compose.yml config > /dev/null
+
+      - name: Validate all stack compose files
+        run: |
+          for compose_file in $(find stacks -name "docker-compose*.yml" -o -name "compose.yml"); do
+            echo "Validating $compose_file..."
+            docker compose -f "$compose_file" config > /dev/null || exit 1
+          done
+
+      - name: Validate wizard compose file
+        run: docker compose -f wizard/docker-compose.yml config > /dev/null
+
+  yaml-lint:
+    name: YAML Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Create yamllint config
+        run: |
+          cat > .yamllint.yml <<EOF
+          extends: default
+          rules:
+            line-length:
+              max: 120
+              level: warning
+            document-start: disable
+            comments:
+              min-spaces-from-content: 1
+            indentation:
+              spaces: 2
+              indent-sequences: true
+            truthy:
+              allowed-values: ['true', 'false', 'on', 'off']
+          ignore: |
+            .github/
+            node_modules/
+            venv/
+          EOF
+
+      - name: Run yamllint
+        run: yamllint -c .yamllint.yml .
+
+  shellcheck:
+    name: Shell Script Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck on all scripts
+        run: |
+          find scripts -name "*.sh" -type f -exec shellcheck --severity=warning {} +
+
+  smoke-test:
+    name: Smoke Test - Stack Deployment
+    runs-on: ubuntu-latest
+    needs: [docker-compose-validation, yaml-lint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create dummy .env file
+        run: |
+          cat > .env <<EOF
+          # Dummy configuration for CI testing
+          HOST_IP=192.168.1.100
+          VIP_ADDRESS=192.168.1.99
+          NETWORK_INTERFACE=eth0
+          SUBNET=192.168.1.0/24
+          GATEWAY=192.168.1.1
+          TZ=UTC
+          PIHOLE_PASSWORD=test_password_ci_only
+          PIHOLE_DNS1=127.0.0.1#5335
+          PIHOLE_DNS2=127.0.0.1#5335
+          PIHOLE_THEME=default-dark
+          DEPLOYMENT_MODE=single-pi-ha
+          KEEPALIVED_PRIORITY=200
+          NODE_ROLE=MASTER
+          VRRP_PASSWORD=test_vrrp_ci
+          UNBOUND_SMART_PREFETCH=0
+          EOF
+
+      - name: Build Unbound image
+        run: docker compose build unbound_primary || true
+
+      - name: Start core DNS services with timeout
+        run: |
+          timeout 120s docker compose --profile dns-core up -d || true
+          sleep 30
+
+      - name: Check container status
+        run: |
+          echo "=== Container Status ==="
+          docker compose ps -a
+          
+          echo -e "\n=== Container Logs ==="
+          docker compose logs --tail=50
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for services to become healthy..."
+          max_attempts=30
+          attempt=0
+          
+          while [ $attempt -lt $max_attempts ]; do
+            attempt=$((attempt + 1))
+            echo "Attempt $attempt/$max_attempts"
+            
+            # Check if pihole is responding
+            if docker compose exec -T pihole_primary pgrep pihole-FTL > /dev/null 2>&1; then
+              echo "✓ Pi-hole is running"
+              exit 0
+            fi
+            
+            sleep 10
+          done
+          
+          echo "❌ Services did not become healthy in time"
+          echo "=== Final container status ==="
+          docker compose ps -a
+          echo "=== Final logs ==="
+          docker compose logs --tail=100
+          exit 1
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose --profile dns-core down -v || true
+          docker system prune -af --volumes || true
