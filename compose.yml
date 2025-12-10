@@ -76,3 +76,54 @@ services:
       PROM_INSTANCE_LABEL: ${PROM_INSTANCE_LABEL:-}
     volumes:
       - ./keepalived/config:/etc/keepalived
+
+  # Monitoring Exporters
+  # These services expose metrics for Prometheus scraping
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    profiles:
+      - exporters
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+
+  pihole_exporter:
+    image: ekofr/pihole-exporter:latest
+    container_name: pihole_exporter
+    profiles:
+      - exporters
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      PIHOLE_PROTOCOL: http
+      PIHOLE_HOSTNAME: 127.0.0.1
+      PIHOLE_PORT: 80
+      PIHOLE_PASSWORD: ${WEBPASSWORD:-changeme}
+      INTERVAL: 15s
+      PORT: 9617
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    profiles:
+      - exporters
+    network_mode: host
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
+    environment:
+      LOKI_URL: ${LOKI_URL:-http://192.168.8.100:3100}
+      HOSTNAME: ${HOSTNAME:-orion-dns}
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail:/etc/promtail:ro

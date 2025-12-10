@@ -1,0 +1,22 @@
+[Unit]
+Description=Orion DNS HA Pi-hole Sync Service
+Documentation=https://github.com/orionsentinel/Orion-sentinel-ha-dns
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/orion-dns-ha
+ExecStart=/opt/orion-dns-ha/ops/pihole-sync.sh --once
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=orion-dns-sync
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

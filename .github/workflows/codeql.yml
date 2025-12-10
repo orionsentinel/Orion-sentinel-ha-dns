@@ -1,0 +1,64 @@
+name: "CodeQL"
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sundays at midnight
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # This repository is primarily shell scripts and YAML
+        # CodeQL supports: 'cpp', 'csharp', 'go', 'java', 'javascript', 'python', 'ruby'
+        # We check for Python if any Python scripts exist, otherwise gracefully skip
+        language: [ 'python' ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for Python files
+        id: check_python
+        run: |
+          if find . -name "*.py" -type f | grep -q .; then
+            echo "has_python=true" >> $GITHUB_OUTPUT
+            echo "Python files found, proceeding with CodeQL analysis"
+          else
+            echo "has_python=false" >> $GITHUB_OUTPUT
+            echo "No Python files found, skipping CodeQL analysis"
+          fi
+
+      - name: Initialize CodeQL
+        if: steps.check_python.outputs.has_python == 'true'
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Autobuild
+        if: steps.check_python.outputs.has_python == 'true'
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        if: steps.check_python.outputs.has_python == 'true'
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
+
+      - name: Skip Analysis
+        if: steps.check_python.outputs.has_python == 'false'
+        run: |
+          echo "✓ CodeQL analysis skipped - no Python files in repository"
+          echo "This is expected for shell-script-only repositories"

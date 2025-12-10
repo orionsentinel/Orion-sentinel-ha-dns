@@ -40,3 +40,16 @@ stacks/dns/blocky/certs/*.key
 stacks/dns/blocky/certs/*.crt
 stacks/dns/blocky/certs/*.pem
 !stacks/dns/blocky/certs/.gitkeep
+
+# Test and temporary files
+.env.test
+*.tmp
+*.swp
+*~
+
+# Pi-hole data directories (created at runtime)
+pihole/
+keepalived/config/
+
+# Promtail runtime data
+promtail/positions.yaml

@@ -1,0 +1,16 @@
+[Unit]
+Description=Orion DNS HA Pi-hole Sync Timer
+Documentation=https://github.com/orionsentinel/Orion-sentinel-ha-dns
+Requires=orion-dns-ha-sync.service
+
+[Timer]
+# Run sync every 5 minutes
+OnBootSec=5min
+OnUnitActiveSec=5min
+Unit=orion-dns-ha-sync.service
+
+# Run missed timers if system was down
+Persistent=true
+
+[Install]
+WantedBy=timers.target
