@@ -1,12 +1,17 @@
 # Orion Sentinel DNS HA - Installation Guide
 
-This guide provides comprehensive, step-by-step instructions to install the Orion Sentinel DNS HA stack.
+This guide provides comprehensive, step-by-step instructions to install the Orion Sentinel DNS HA stack with Pi-hole, Unbound, and Keepalived.
+
+---
 
 ## Table of Contents
+
 - [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Installation Methods](#installation-methods)
+- [Installation Overview](#installation-overview)
+- [Single-Node Installation](#single-node-installation)
+- [Two-Node HA Installation](#two-node-ha-installation)
 - [Post-Installation](#post-installation)
+- [Systemd Integration](#systemd-integration)
 - [Verification](#verification)
 - [Troubleshooting](#troubleshooting)
 
@@ -15,411 +20,799 @@ This guide provides comprehensive, step-by-step instructions to install the Orio
 ## Prerequisites
 
 ### Hardware Requirements
-- **Minimum**: Raspberry Pi 4, 4GB RAM, 32GB SD Card
-- **Recommended**: Raspberry Pi 5, 8GB RAM, 64GB+ SSD (USB), Active cooling
-- Stable 3A+ power supply
-- Ethernet connection (recommended)
+
+**Minimum (Single Node):**
+- Raspberry Pi 4, 4GB RAM
+- 32GB SD card (Class 10)
+- 3A+ power supply
+
+**Recommended (Two-Node HA):**
+- 2× Raspberry Pi 4/5, 4GB+ RAM
+- 2× 64GB+ USB SSD drives
+- 2× 3A+ power supplies
+- Ethernet connection (required for VRRP)
 
 ### Software Requirements
-- **Operating System**: Raspberry Pi OS (64-bit) or any Linux distribution
-- **Architecture**: ARM64 (aarch64), ARMv7l, or x86_64
-- **Docker**: Version 20.10 or later
-- **Docker Compose**: Version 2.0 or later (plugin format)
+
+- **Operating System**: Raspberry Pi OS (64-bit), Ubuntu Server, or Debian
+- **Docker**: 20.10 or later
+- **Docker Compose**: V2 (plugin format: `docker compose` not `docker-compose`)
 
 ### Network Requirements
-- Static IP address or DHCP reservation
-- Available IP addresses for:
-  - Primary DNS (e.g., 192.168.8.251)
-  - Secondary DNS (e.g., 192.168.8.252)
-  - VIP (Virtual IP for HA, e.g., 192.168.8.255)
-- Subnet and gateway information
+
+**Single Node:**
+- One static IP address (e.g., `192.168.8.249`)
+
+**Two-Node HA:**
+- Two static IPs for nodes:
+  - Node A (Primary): `192.168.8.249`
+  - Node B (Secondary): `192.168.8.243`
+- One VIP (Virtual IP): `192.168.8.250`
+- Network interface name (typically `eth0` or `eth1`)
+- Gateway and subnet information
+
+**VRRP Requirements:**
+- Either multicast support OR unicast mode (unicast recommended)
+- No firewall blocking VRRP protocol (IP protocol 112) if using multicast
+- Nodes must be on the same L2 subnet
 
 ### Knowledge Requirements
+
 - Basic Linux command-line skills
-- Understanding of DNS concepts
-- Docker basics (helpful but not required)
+- SSH access to your Raspberry Pi(s)
+- Understanding of basic networking concepts
+- Familiarity with environment variables
 
 ---
 
-## Quick Start
+## Installation Overview
 
-For users who want to get started immediately:
+The installation process follows these steps:
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
-cd Orion-sentinel-ha-dns
+1. **Prepare Raspberry Pi(s)**: Install OS, configure network, install Docker
+2. **Clone Repository**: Get the latest code
+3. **Configure Environment**: Set up `.env` file with your network settings
+4. **Deploy Services**: Start Docker containers
+5. **Verify Operation**: Test DNS resolution and failover (HA mode)
+6. **Set Up Systemd**: Enable autostart and operational timers
+7. **Configure Clients**: Point devices to new DNS server
 
-# 2. Run the installation script
-bash install.sh
-```
-
-The script will:
-- Check system requirements
-- Install Docker and dependencies
-- Launch the web-based setup wizard at `http://<your-pi-ip>:5555`
+**Time Required:**
+- Single Node: ~30 minutes
+- Two-Node HA: ~60 minutes
 
 ---
 
-## Installation Methods
+## Single-Node Installation
 
-### Method 1: Web-Based Setup Wizard (Recommended)
+Perfect for testing, home labs, or single Pi setups.
 
-**Best for**: New users who prefer a graphical interface
+### Step 1: Prepare Raspberry Pi
 
 ```bash
-git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
-cd Orion-sentinel-ha-dns
-bash install.sh
+# Update system
+sudo apt-get update && sudo apt-get upgrade -y
+
+# Install Docker (if not already installed)
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Add your user to docker group
+sudo usermod -aG docker $USER
+
+# Log out and back in for group changes to take effect
+exit
 ```
 
-Then open your browser to `http://<your-pi-ip>:5555` and follow the wizard.
-
-**Features**:
-- Guided step-by-step configuration
-- Visual validation of settings
-- Automated deployment
-- No command-line knowledge required
-
----
-
-### Method 2: Interactive CLI Setup
-
-**Best for**: Users comfortable with terminal but want guidance
+### Step 2: Clone Repository
 
 ```bash
-git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
-cd Orion-sentinel-ha-dns
-bash scripts/install.sh
+# Clone to recommended location
+cd /opt
+sudo git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git orion-dns-ha
+sudo chown -R $USER:$USER orion-dns-ha
+cd orion-dns-ha
 ```
 
-**Features**:
-- Interactive prompts for configuration
-- Automatic validation
-- Real-time feedback
-- No need to edit files manually
+### Step 3: Configure Environment
 
----
-
-### Method 3: Manual Configuration
-
-**Best for**: Advanced users who want full control
-
-#### Step 1: Clone Repository
 ```bash
-git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
-cd Orion-sentinel-ha-dns
-```
-
-#### Step 2: Create Configuration
-```bash
-# Copy the example environment file
+# Copy example environment file
 cp .env.example .env
 
-# Edit the configuration
+# Edit configuration
 nano .env
 ```
 
-**Required Settings**:
+**Required Changes in `.env`:**
+
 ```bash
-# Network Configuration
-HOST_IP=192.168.8.250           # Your Pi's IP address
-PRIMARY_DNS_IP=192.168.8.251    # Primary Pi-hole IP
-SECONDARY_DNS_IP=192.168.8.252  # Secondary Pi-hole IP
-VIP_ADDRESS=192.168.8.255       # Virtual IP (for HA)
-NETWORK_INTERFACE=eth0          # Network interface
-SUBNET=192.168.8.0/24          # Your network subnet
-GATEWAY=192.168.8.1            # Your network gateway
+# Set your Pi's IP address
+NODE_IP=192.168.8.249  # Change to your Pi's IP
 
-# Security (CHANGE THESE!)
-PIHOLE_PASSWORD=your_secure_password_here
-GRAFANA_ADMIN_PASSWORD=your_secure_password_here
-VRRP_PASSWORD=your_secure_password_here
+# Set Pi-hole admin password (REQUIRED)
+WEBPASSWORD=your-strong-password-here  # Generate with: openssl rand -base64 32
 
-# Timezone
-TZ=Europe/Amsterdam
+# Adjust network settings if needed
+NETWORK_INTERFACE=eth0  # Your network interface (check with: ip addr)
+SUBNET=192.168.8.0/24   # Your subnet
+GATEWAY=192.168.8.1     # Your gateway
+TZ=America/New_York     # Your timezone
 ```
 
-#### Step 3: Install Dependencies
+**Optional Settings:**
+
 ```bash
-# Install Docker (if not already installed)
-curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker $USER
+# DNS over TLS via NextDNS (disabled by default for local recursion)
+# See unbound/nextdns-forward.conf to enable
 
-# Install Docker Compose plugin
-sudo apt-get update
-sudo apt-get install -y docker-compose-plugin
-
-# Log out and back in for group changes to take effect
+# Monitoring (if you have Prometheus/Loki)
+LOKI_URL=http://your-loki:3100
 ```
 
-#### Step 4: Deploy the Stack
-```bash
-# Run the installation script
-bash scripts/install.sh
+### Step 4: Deploy Services
 
-# Or deploy manually
-cd stacks/dns
-docker compose --profile single-pi-ha up -d
+```bash
+# Start Pi-hole + Unbound
+docker compose --profile single-node up -d
+
+# Verify containers are running
+docker ps
 ```
+
+Expected output:
+```
+CONTAINER ID   IMAGE                                    STATUS
+abc123def456   ghcr.io/mpgirro/docker-pihole-unbound   Up 10 seconds
+```
+
+### Step 5: Verify Operation
+
+```bash
+# Test DNS resolution
+dig @localhost github.com
+
+# Should return an answer section with IP addresses
+```
+
+### Step 6: Access Pi-hole Admin
+
+Open in your browser:
+```
+http://<your-pi-ip>/admin
+```
+
+Login with the password you set in `WEBPASSWORD`.
 
 ---
 
-## Deployment Modes
+## Two-Node HA Installation
 
-### Single-Node HA Mode
-All services run on one Pi with redundancy:
-- 2x Pi-hole instances (primary + secondary)
-- 2x Unbound instances
-- Keepalived for VIP management
+For production deployments with automatic failover.
 
-```bash
-# Deploy single-node HA
-cd stacks/dns
-docker compose --profile single-pi-ha up -d
+### Architecture
+
+```
+Node A (Primary)        Node B (Secondary)
+192.168.8.249          192.168.8.243
+Priority: 200          Priority: 150
+                ↓
+        VIP: 192.168.8.250
+        (Floats between nodes)
 ```
 
-### Two-Pi HA Mode
-Services distributed across two Pis for true high availability:
+### Prerequisites
 
-**Pi 1 (Primary)**:
+1. **SSH Key Setup** (for Pi-hole sync):
+
 ```bash
-cd stacks/dns
-docker compose --profile two-pi-ha-pi1 up -d
+# On Node A (Primary)
+ssh-keygen -t ed25519 -C "orion-dns-sync"
+ssh-copy-id pi@192.168.8.243
+
+# Test connection
+ssh pi@192.168.8.243 "echo Connection successful"
 ```
 
-**Pi 2 (Secondary)**:
+2. **Static IP Assignment**:
+   - Configure both Pis with static IPs via DHCP reservation or `/etc/dhcpcd.conf`
+
+3. **Time Synchronization**:
 ```bash
-cd stacks/dns
-docker compose --profile two-pi-ha-pi2 up -d
+# On both nodes
+sudo timedatectl set-ntp true
+```
+
+### Node A (Primary) Setup
+
+#### Step 1: Prepare Node A
+
+```bash
+# Update system
+sudo apt-get update && sudo apt-get upgrade -y
+
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+
+# Install rsync (for Pi-hole sync)
+sudo apt-get install -y rsync
+
+# Log out and back in
+exit
+```
+
+#### Step 2: Clone Repository
+
+```bash
+cd /opt
+sudo git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git orion-dns-ha
+sudo chown -R $USER:$USER orion-dns-ha
+cd orion-dns-ha
+```
+
+#### Step 3: Configure as Primary
+
+```bash
+# Use primary example
+cp .env.primary.example .env
+
+# Edit configuration
+nano .env
+```
+
+**Key Settings for Primary:**
+
+```bash
+# Node Identity
+HOSTNAME=orion-dns-primary
+NODE_IP=192.168.8.249      # Primary node IP
+NODE_ROLE=MASTER
+
+# VIP Configuration
+VIP_ADDRESS=192.168.8.250
+VIP_NETMASK=24
+NETWORK_INTERFACE=eth1      # Interface for VIP (usually eth0 or eth1)
+
+# Network Settings
+SUBNET=192.168.8.0/24
+GATEWAY=192.168.8.1
+TZ=America/New_York
+
+# Keepalived
+KEEPALIVED_PRIORITY=200     # Higher = preferred MASTER
+VRRP_PASSWORD=your-shared-secret  # MUST match on both nodes!
+
+# VRRP Peer
+USE_UNICAST_VRRP=true
+PEER_IP=192.168.8.243       # Secondary node IP
+UNICAST_SRC_IP=192.168.8.249
+
+# Pi-hole
+WEBPASSWORD=your-strong-password  # Generate: openssl rand -base64 32
+
+# Monitoring (optional)
+PROM_INSTANCE_LABEL=node-primary
+LOKI_URL=http://192.168.8.100:3100
+```
+
+#### Step 4: Deploy on Primary
+
+```bash
+# Start services
+docker compose --profile two-node-ha-primary up -d
+
+# Or use Make
+make up-core
+
+# Verify VIP is assigned
+ip addr show eth1 | grep 192.168.8.250
+```
+
+Expected: You should see `192.168.8.250/24` listed under `eth1`.
+
+#### Step 5: Verify Primary
+
+```bash
+# Check containers
+docker ps
+
+# Test DNS on VIP
+dig @192.168.8.250 github.com
+
+# Check keepalived logs
+docker logs keepalived
+
+# Should see: "Entering MASTER STATE"
+```
+
+### Node B (Secondary) Setup
+
+#### Step 1: Prepare Node B
+
+Same as Node A:
+
+```bash
+sudo apt-get update && sudo apt-get upgrade -y
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+sudo apt-get install -y rsync
+exit  # Log out and back in
+```
+
+#### Step 2: Clone Repository
+
+```bash
+cd /opt
+sudo git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git orion-dns-ha
+sudo chown -R $USER:$USER orion-dns-ha
+cd orion-dns-ha
+```
+
+#### Step 3: Configure as Secondary
+
+```bash
+# Use secondary example
+cp .env.secondary.example .env
+
+# Edit configuration
+nano .env
+```
+
+**Key Settings for Secondary:**
+
+```bash
+# Node Identity
+HOSTNAME=orion-dns-secondary
+NODE_IP=192.168.8.243       # Secondary node IP
+NODE_ROLE=BACKUP
+
+# VIP Configuration (same as primary)
+VIP_ADDRESS=192.168.8.250
+VIP_NETMASK=24
+NETWORK_INTERFACE=eth1
+
+# Network Settings (same as primary)
+SUBNET=192.168.8.0/24
+GATEWAY=192.168.8.1
+TZ=America/New_York
+
+# Keepalived
+KEEPALIVED_PRIORITY=150     # Lower than primary!
+VRRP_PASSWORD=your-shared-secret  # MUST match primary!
+
+# VRRP Peer
+USE_UNICAST_VRRP=true
+PEER_IP=192.168.8.249       # Primary node IP
+UNICAST_SRC_IP=192.168.8.243
+
+# Pi-hole
+WEBPASSWORD=your-strong-password  # Should match primary
+
+# Monitoring (optional)
+PROM_INSTANCE_LABEL=node-secondary
+LOKI_URL=http://192.168.8.100:3100
+```
+
+#### Step 4: Deploy on Secondary
+
+```bash
+# Start services
+docker compose --profile two-node-ha-backup up -d
+
+# Or use Make
+make up-core
+
+# Verify VIP is NOT assigned (should be on primary)
+ip addr show eth1 | grep 192.168.8.250
+```
+
+Expected: VIP should NOT appear (it's on the primary).
+
+#### Step 5: Verify Secondary
+
+```bash
+# Check containers
+docker ps
+
+# Test DNS on local IP (not VIP)
+dig @192.168.8.243 github.com
+
+# Check keepalived logs
+docker logs keepalived
+
+# Should see: "Entering BACKUP STATE"
+```
+
+### Step 6: Test Failover
+
+```bash
+# On Node A (Primary), stop Pi-hole
+docker stop pihole_unbound
+
+# Wait 15-20 seconds, then on Node B check VIP
+ip addr show eth1 | grep 192.168.8.250
+
+# VIP should now be on Node B!
+
+# Test DNS still works
+dig @192.168.8.250 github.com
+
+# Restart Pi-hole on Node A
+docker start pihole_unbound
+
+# VIP should return to Node A within 15-20 seconds
 ```
 
 ---
 
 ## Post-Installation
 
-### 1. Access Web Interfaces
+### Configure Pi-hole Sync (Two-Node HA Only)
 
-After successful deployment:
-
-- **Pi-hole Primary**: `http://192.168.8.251/admin`
-- **Pi-hole Secondary**: `http://192.168.8.252/admin`
-- **Grafana**: `http://192.168.8.250:3000`
-- **Prometheus**: `http://192.168.8.250:9090`
-
-Default credentials:
-- Pi-hole: Password from `PIHOLE_PASSWORD` in `.env`
-- Grafana: `admin` / password from `GRAFANA_ADMIN_PASSWORD` in `.env`
-
-### 2. Configure Your Router/DHCP Server
-
-Set DNS servers in your router to:
-- **Primary**: `192.168.8.255` (VIP - recommended)
-- **Secondary**: `192.168.8.251` (Primary Pi-hole)
-
-Or configure individual devices to use these DNS servers.
-
-### 3. Apply Security Profile
-
-Choose and apply a DNS filtering profile:
+Synchronize Pi-hole configuration from primary to secondary:
 
 ```bash
-# Family-friendly (blocks ads + adult content)
-bash scripts/apply-profile.py family
+# On Node A (Primary), run manual sync
+make sync
 
-# Standard (blocks ads only)
-bash scripts/apply-profile.py standard
-
-# Paranoid (maximum blocking)
-bash scripts/apply-profile.py paranoid
+# Or directly
+PEER_IP=192.168.8.243 ./ops/pihole-sync.sh
 ```
+
+### Enable Monitoring Exporters (Optional)
+
+```bash
+# On both nodes
+docker compose --profile exporters up -d
+
+# Or restart with exporters
+make down
+make up-all
+```
+
+Exporters available:
+- **Node Exporter**: `http://<node-ip>:9100/metrics`
+- **Pi-hole Exporter**: `http://<node-ip>:9617/metrics`
+- **Promtail**: Logs → Loki
+
+### Configure Automatic Updates (Optional)
+
+```bash
+# Add to crontab for weekly gravity updates
+crontab -e
+
+# Add this line:
+0 3 * * 0 docker exec pihole_unbound pihole updateGravity
+```
+
+---
+
+## Systemd Integration
+
+Enable autostart, health checks, backups, and sync on boot.
+
+### Primary Node
+
+```bash
+# Install systemd units
+sudo make install-systemd-primary
+
+# Enable and start services
+sudo systemctl enable --now orion-dns-ha-primary.service
+sudo systemctl enable --now orion-dns-ha-health.timer
+sudo systemctl enable --now orion-dns-ha-backup.timer
+sudo systemctl enable --now orion-dns-ha-sync.timer
+
+# Verify status
+sudo systemctl status orion-dns-ha-primary.service
+sudo systemctl list-timers
+```
+
+### Secondary Node
+
+```bash
+# Install systemd units
+sudo make install-systemd-secondary
+
+# Enable and start services
+sudo systemctl enable --now orion-dns-ha-backup-node.service
+sudo systemctl enable --now orion-dns-ha-health.timer
+sudo systemctl enable --now orion-dns-ha-backup.timer
+
+# Verify status
+sudo systemctl status orion-dns-ha-backup-node.service
+sudo systemctl list-timers
+```
+
+### What the Timers Do
+
+- **Health Timer** (`orion-dns-ha-health.timer`):
+  - Runs every minute
+  - Executes DNS health check via `ops/orion-dns-health.sh`
+  - Auto-restarts containers on repeated failures
+  
+- **Backup Timer** (`orion-dns-ha-backup.timer`):
+  - Runs daily at 3 AM
+  - Creates compressed backup via `ops/orion-dns-backup.sh`
+  - Retains backups for 7 days (configurable via `BACKUP_RETENTION_DAYS`)
+  
+- **Sync Timer** (`orion-dns-ha-sync.timer`, primary only):
+  - Runs hourly
+  - Syncs Pi-hole config from primary to secondary
+  - Requires SSH key authentication
 
 ---
 
 ## Verification
 
-### Check Services are Running
+### DNS Resolution Tests
+
 ```bash
-# View all running containers
+# Test VIP (HA setup)
+dig @192.168.8.250 github.com
+dig @192.168.8.250 google.com
+
+# Test specific node
+dig @192.168.8.249 github.com  # Primary
+dig @192.168.8.243 github.com  # Secondary
+
+# Test DNSSEC validation
+dig @192.168.8.250 dnssec-failed.org  # Should fail (SERVFAIL)
+dig @192.168.8.250 dnssec.works       # Should succeed
+```
+
+### VRRP Status Check
+
+```bash
+# Check which node has VIP
+# On Node A:
+ip addr show eth1 | grep 192.168.8.250
+
+# On Node B:
+ip addr show eth1 | grep 192.168.8.250
+
+# Only one should show the VIP
+
+# Check VRRP communication
+docker logs keepalived | tail -20
+```
+
+### Pi-hole Admin Access
+
+```bash
+# Single node
+http://<node-ip>/admin
+
+# Two-node HA
+http://192.168.8.250/admin  # Always works (VIP)
+http://192.168.8.249/admin  # Primary direct
+http://192.168.8.243/admin  # Secondary direct
+```
+
+### Container Health
+
+```bash
+# Check all containers
 docker ps
 
-# Should see:
-# - pihole_primary
-# - pihole_secondary (single-node HA mode)
-# - unbound_primary
-# - unbound_secondary (single-node HA mode)
-# - keepalived
-```
+# View Pi-hole logs
+docker logs pihole_unbound
 
-### Test DNS Resolution
-```bash
-# Test DNS query through VIP
-dig @192.168.8.255 google.com
+# View Keepalived logs
+docker logs keepalived
 
-# Test DNS query through primary
-dig @192.168.8.251 google.com
-
-# Test that blocked domains are blocked
-dig @192.168.8.255 ads.example.com
-```
-
-### Check Container Health
-```bash
-# View container health status
-docker ps --format "table {{.Names}}\t{{.Status}}"
-
-# View logs for specific service
-docker logs pihole_primary
-docker logs unbound_primary
-```
-
-### Verify Network Configuration
-```bash
-# Check VIP is active
-ip addr show | grep 192.168.8.255
-
-# Test connectivity from another device
-ping 192.168.8.255
+# Check health check script
+docker exec keepalived /etc/keepalived/check_dns.sh
+echo $?  # 0 = healthy, 1 = failed
 ```
 
 ---
 
 ## Troubleshooting
 
-### Docker Permission Errors
-```bash
-# Add user to docker group
-sudo usermod -aG docker $USER
+### Issue: DNS Not Resolving
 
-# Apply group changes
-newgrp docker
+**Symptoms:** `dig @192.168.8.250` times out or returns SERVFAIL
 
-# Or log out and back in
-```
+**Solutions:**
 
-### Services Not Starting
-```bash
-# Check logs
-docker compose -f stacks/dns/docker-compose.yml logs
+1. **Check container is running:**
+   ```bash
+   docker ps | grep pihole_unbound
+   ```
 
-# Restart services
-docker compose -f stacks/dns/docker-compose.yml restart
+2. **Verify network mode is host:**
+   ```bash
+   docker inspect pihole_unbound | grep NetworkMode
+   # Should show "host"
+   ```
 
-# Check Docker daemon
-sudo systemctl status docker
-```
+3. **Check DNSMASQ_LISTENING:**
+   ```bash
+   grep DNSMASQ_LISTENING .env
+   # Should be "all"
+   ```
 
-### Network Issues
-```bash
-# Verify network configuration
-docker network ls
-docker network inspect dns_net
+4. **Check Pi-hole logs:**
+   ```bash
+   docker logs pihole_unbound | tail -50
+   ```
 
-# Recreate network if needed
-docker network rm dns_net
-bash scripts/install.sh
-```
+5. **Test Unbound directly:**
+   ```bash
+   docker exec pihole_unbound dig @127.0.0.1 -p 5335 github.com
+   ```
 
-### Can't Access from Pi Itself
-This is normal with macvlan networks. The Pi cannot access its own macvlan IPs.
-- Access services from another device on the network
-- Use `docker exec` to access containers directly from the Pi
+### Issue: VIP Not Assigned
 
-### DNS Not Resolving
-```bash
-# Check Pi-hole is running
-docker logs pihole_primary
+**Symptoms:** `ip addr show` doesn't show VIP on either node
 
-# Check Unbound is running
-docker logs unbound_primary
+**Solutions:**
 
-# Verify DNS configuration in Pi-hole
-docker exec pihole_primary pihole status
+1. **Check network interface name:**
+   ```bash
+   ip addr show
+   # Find your interface (eth0, eth1, etc.)
+   # Update NETWORK_INTERFACE in .env
+   ```
 
-# Test DNS from container
-docker exec pihole_primary dig @127.0.0.1 google.com
-```
+2. **Verify VRRP password matches:**
+   ```bash
+   # On both nodes
+   grep VRRP_PASSWORD .env
+   # Must be identical!
+   ```
 
-### High CPU/Memory Usage
-```bash
-# Check resource usage
-docker stats
+3. **Check unicast configuration:**
+   ```bash
+   # Both nodes should have:
+   USE_UNICAST_VRRP=true
+   PEER_IP=<other-node-ip>
+   UNICAST_SRC_IP=<this-node-ip>
+   ```
 
-# Reduce logging in Pi-hole web interface
-# Add swap space
-sudo dphys-swapfile swapoff
-sudo nano /etc/dphys-swapfile  # Increase CONF_SWAPSIZE
-sudo dphys-swapfile setup
-sudo dphys-swapfile swapon
-```
+4. **Review keepalived config:**
+   ```bash
+   docker exec keepalived cat /etc/keepalived/keepalived.conf
+   # Check for syntax errors
+   ```
+
+5. **Check keepalived logs:**
+   ```bash
+   docker logs keepalived
+   # Look for errors
+   ```
+
+### Issue: Failover Not Working
+
+**Symptoms:** VIP stays on failed primary
+
+**Solutions:**
+
+1. **Test health check manually:**
+   ```bash
+   docker exec keepalived /etc/keepalived/check_dns.sh
+   echo $?  # Should return 0 when healthy
+   ```
+
+2. **Verify health check settings:**
+   ```bash
+   grep CHECK_ .env
+   # CHECK_DNS_TARGET should be 127.0.0.1
+   # CHECK_DNS_FQDN should be resolvable
+   ```
+
+3. **Check weight settings:**
+   ```bash
+   # CHECK_WEIGHT should be negative (e.g., -20)
+   # This decreases priority on failures
+   ```
+
+4. **Monitor VRRP transitions:**
+   ```bash
+   docker exec keepalived tail -f /var/log/keepalived-notify.log
+   # Stop primary Pi-hole and watch transitions
+   ```
+
+### Issue: Pi-hole Sync Fails
+
+**Symptoms:** `make sync` or `ops/pihole-sync.sh` fails
+
+**Solutions:**
+
+1. **Test SSH connectivity:**
+   ```bash
+   ssh pi@192.168.8.243 "echo SSH works"
+   # Should succeed without password prompt
+   ```
+
+2. **Set up SSH keys:**
+   ```bash
+   ssh-keygen -t ed25519
+   ssh-copy-id pi@192.168.8.243
+   ```
+
+3. **Verify rsync installed:**
+   ```bash
+   # On both nodes
+   which rsync
+   # Install if missing: sudo apt-get install rsync
+   ```
+
+4. **Check PEER_IP:**
+   ```bash
+   grep PEER_IP .env
+   # Should point to secondary node
+   ```
+
+### Issue: Containers Keep Restarting
+
+**Symptoms:** `docker ps` shows containers repeatedly restarting
+
+**Solutions:**
+
+1. **Check logs for errors:**
+   ```bash
+   docker logs pihole_unbound
+   docker logs keepalived
+   ```
+
+2. **Verify environment variables:**
+   ```bash
+   docker compose config
+   # Check for unresolved ${VARS}
+   ```
+
+3. **Check for port conflicts:**
+   ```bash
+   sudo netstat -tulpn | grep :53
+   # Port 53 should be free or used by pihole_unbound
+   ```
+
+4. **Review compose.yml syntax:**
+   ```bash
+   docker compose config > /dev/null
+   # Should complete without errors
+   ```
 
 ---
 
 ## Next Steps
 
-### Set Up Monitoring (Optional)
-```bash
-# Deploy observability stack
-cd stacks/observability
-docker compose up -d
+After successful installation:
 
-# Access Grafana at http://192.168.8.250:3000
-```
-
-### Enable Automated Backups
-```bash
-# Set up cron jobs for automatic backups
-bash scripts/setup-cron.sh
-```
-
-### Configure Notifications (Optional)
-Edit `.env` and add Signal notification settings:
-```bash
-SIGNAL_NUMBER=+1234567890
-SIGNAL_RECIPIENTS=+1234567890
-```
-
-### Integrate with NSM/AI (Optional)
-See [ORION_SENTINEL_INTEGRATION.md](docs/ORION_SENTINEL_INTEGRATION.md) for details on integrating with the Network Security Monitoring & AI component.
+1. **Configure Client Devices**: Point to `192.168.8.250` (or single node IP) as DNS server
+2. **Set Up Router DHCP**: Configure DHCP to advertise your new DNS server
+3. **Customize Pi-hole**: Add whitelist/blacklist entries, configure blocklists
+4. **Set Up Monitoring**: Connect exporters to Prometheus/Grafana
+5. **Review Logs**: Check `docker logs` regularly for the first week
+6. **Test Failover**: Periodically test HA failover (if two-node setup)
 
 ---
 
 ## Additional Resources
 
-- **[README.md](README.md)** - Project overview and features
-- **[QUICKSTART.md](QUICKSTART.md)** - One-page quick reference
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Comprehensive troubleshooting guide
-- **[USER_GUIDE.md](USER_GUIDE.md)** - Daily operation and maintenance
-- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Validation and testing procedures
+- **GitHub Repository**: https://github.com/orionsentinel/Orion-sentinel-ha-dns
+- **Pi-hole Documentation**: https://docs.pi-hole.net/
+- **Unbound Documentation**: https://www.nlnetlabs.nl/documentation/unbound/
+- **Keepalived Documentation**: https://keepalived.readthedocs.io/
 
 ---
 
 ## Getting Help
 
-- **Documentation**: Check the docs in this repository
-- **Issues**: [GitHub Issues](https://github.com/orionsentinel/Orion-sentinel-ha-dns/issues)
-- **Community**: See README for community links
+If you encounter issues not covered in this guide:
+
+1. Check the [README.md](README.md) troubleshooting section
+2. Review GitHub Issues: https://github.com/orionsentinel/Orion-sentinel-ha-dns/issues
+3. Open a new issue with:
+   - Your setup (single/two-node)
+   - Output of `docker ps`, `docker logs`, and relevant config files
+   - Steps to reproduce the problem
 
 ---
 
-## Security Notes
-
-⚠️ **Important Security Practices**:
-
-1. **Change all default passwords** in `.env` before deployment
-2. **Use strong passwords** (20+ characters, random)
-3. **Keep system updated**: `sudo apt update && sudo apt upgrade`
-4. **Review firewall rules**: Limit access to admin interfaces
-5. **Monitor logs regularly**: Check for suspicious activity
-
-Generate secure passwords:
-```bash
-# Generate random password
-openssl rand -base64 32
-```
-
----
-
-**Installation Date**: _____________  
-**Version**: 2.4.0  
-**Last Updated**: November 2025
+**Installation complete!** Your high-availability DNS infrastructure is now operational. 🎉
