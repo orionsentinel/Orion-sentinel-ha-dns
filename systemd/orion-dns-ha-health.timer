@@ -1,0 +1,38 @@
+# =============================================================================
+# Orion DNS HA - Health Check Timer
+# =============================================================================
+#
+# This systemd timer triggers the health check service periodically.
+# The service checks DNS health and restarts containers on repeated failures.
+#
+# Installation:
+#   1. Copy orion-dns-ha-health.service to /etc/systemd/system/
+#   2. Copy this file to /etc/systemd/system/orion-dns-ha-health.timer
+#   3. Run: sudo systemctl daemon-reload
+#   4. Run: sudo systemctl enable --now orion-dns-ha-health.timer
+#
+# Verification:
+#   sudo systemctl status orion-dns-ha-health.timer
+#   sudo journalctl -u orion-dns-ha-health.service -f
+#
+# =============================================================================
+
+[Unit]
+Description=Run Orion DNS HA health check periodically
+Documentation=https://github.com/orionsentinel/Orion-sentinel-ha-dns
+
+[Timer]
+# Start 2 minutes after boot to allow containers to fully initialize
+OnBootSec=2min
+
+# Run every minute after the service last ran
+OnUnitActiveSec=1min
+
+# Allow some variance in execution time
+AccuracySec=30s
+
+# Service to trigger
+Unit=orion-dns-ha-health.service
+
+[Install]
+WantedBy=timers.target

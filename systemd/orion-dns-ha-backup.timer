@@ -1,0 +1,36 @@
+# =============================================================================
+# Orion DNS HA - Backup Timer
+# =============================================================================
+#
+# This systemd timer triggers daily backups of Pi-hole and keepalived config.
+# Backups are stored in /opt/orion-dns-ha/backups/ with automatic retention.
+#
+# Installation:
+#   1. Copy orion-dns-ha-backup.service to /etc/systemd/system/
+#   2. Copy this file to /etc/systemd/system/orion-dns-ha-backup.timer
+#   3. Run: sudo systemctl daemon-reload
+#   4. Run: sudo systemctl enable --now orion-dns-ha-backup.timer
+#
+# Verification:
+#   sudo systemctl status orion-dns-ha-backup.timer
+#   sudo systemctl list-timers --all | grep orion
+#   sudo journalctl -u orion-dns-ha-backup.service
+#
+# =============================================================================
+
+[Unit]
+Description=Daily backup of Orion DNS HA
+Documentation=https://github.com/orionsentinel/Orion-sentinel-ha-dns
+
+[Timer]
+# Run daily at 03:15 AM
+OnCalendar=*-*-* 03:15:00
+
+# Catch up if the system was off at scheduled time
+Persistent=true
+
+# Service to trigger
+Unit=orion-dns-ha-backup.service
+
+[Install]
+WantedBy=timers.target

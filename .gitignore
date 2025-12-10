@@ -32,6 +32,9 @@ stacks/observability/signal-cli-config/*
 backups/
 !backups/.gitkeep
 
+# Runtime state directory (created by ops/orion-dns-health.sh)
+run/
+
 # TLS certificates for DoH/DoT gateway (security sensitive)
 stacks/dns/blocky/certs/*.key
 stacks/dns/blocky/certs/*.crt
