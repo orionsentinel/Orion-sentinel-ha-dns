@@ -6,8 +6,8 @@ Requires=orion-dns-ha-sync.service
 [Timer]
 # Run sync every hour
 OnCalendar=hourly
-# Run 5 minutes after boot
-OnBootSec=5min
+# Run 10 minutes after boot to ensure network is ready
+OnBootSec=10min
 # Run immediately if we missed a scheduled run
 Persistent=true
 

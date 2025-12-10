@@ -55,7 +55,9 @@ if [[ -z "${PEER_IP}" ]]; then
 fi
 
 if ! command -v rsync >/dev/null 2>&1; then
-    log "ERROR: rsync not found. Install with: sudo apt-get install rsync"
+    log "ERROR: rsync not found. Please install rsync using your package manager."
+    log "Example: sudo apt-get install rsync  # Debian/Ubuntu"
+    log "         sudo yum install rsync      # RHEL/CentOS"
     exit 1
 fi
 
@@ -64,8 +66,8 @@ if [[ ! -d "${PIHOLE_CONFIG_DIR}" ]]; then
     exit 1
 fi
 
-# Check SSH connectivity
-if ! ssh -o BatchMode=yes -o ConnectTimeout=5 "${SSH_USER}@${PEER_IP}" true 2>/dev/null; then
+# Check SSH connectivity (with 10 second timeout for slower networks)
+if ! ssh -o BatchMode=yes -o ConnectTimeout=10 "${SSH_USER}@${PEER_IP}" true 2>/dev/null; then
     log "ERROR: Cannot connect to peer node via SSH: ${SSH_USER}@${PEER_IP}"
     log "Ensure SSH key-based authentication is set up."
     exit 1

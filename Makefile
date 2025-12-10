@@ -38,7 +38,7 @@ help: ## Show this help message
 	@if [ -f .env ]; then \
 		echo "  ✓ .env file found"; \
 	else \
-		echo "  ✗ .env file NOT found - copy .env.primary.example or .env.secondary.example to .env"; \
+		echo "  ✗ .env file NOT found - copy .env.primary.example or .env.secondary.example to .env first"; \
 	fi
 
 validate-env: ## Validate environment configuration
@@ -182,7 +182,7 @@ dev-shell-pihole: ## Open shell in pihole container
 info: ## Show deployment information
 	@echo "$(BOLD)Deployment Information:$(NC)"
 	@if [ -f .env ]; then \
-		. .env; \
+		set -a && . ./.env && set +a; \
 		echo "  Node Role: $${NODE_ROLE:-single-node}"; \
 		echo "  Node IP: $${NODE_IP:-not set}"; \
 		echo "  VIP Address: $${VIP_ADDRESS:-not set}"; \
@@ -190,6 +190,7 @@ info: ## Show deployment information
 		echo "  Keepalived Priority: $${KEEPALIVED_PRIORITY:-not set}"; \
 	else \
 		echo "  No .env file found"; \
+		echo "  Copy .env.primary.example or .env.secondary.example to .env first"; \
 	fi
 
 # Systemd Integration

@@ -100,7 +100,7 @@ sudo sh get-docker.sh
 # Add your user to docker group
 sudo usermod -aG docker $USER
 
-# Log out and back in for group changes to take effect
+# Exit SSH session and log back in for group changes to take effect
 exit
 ```
 
