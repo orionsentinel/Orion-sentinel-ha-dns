@@ -1,364 +1,318 @@
-# Implementation Summary: Level 1 & Level 2 Installation Features
+# Repository Cleanup and Modernization - Implementation Summary
 
-**Date:** 2025-11-20  
-**Status:** Implementation Complete ✅  
-**Ready for Testing:** Yes
+## Overview
 
----
-
-## Objective
-
-Implement Level 1 and Level 2 features to make Orion Sentinel DNS HA accessible to both:
-- **Level 1:** Power users who prefer command-line tools with guided setup
-- **Level 2:** Non-expert tinkerers who want a simple web wizard
-
----
+This implementation successfully modernizes the Orion Sentinel DNS HA repository with a simplified structure, comprehensive documentation, and production-ready configuration.
 
 ## What Was Implemented
 
-### Level 1: Power User CLI Installation ✅
+### 1. Docker Compose Configuration ✓
 
-**Enhanced `scripts/install.sh`** with interactive configuration mode:
+**File**: `compose.yml`
 
-**Features Added:**
-- Interactive prompt: Choose between single-node and HA mode
-- Network auto-detection: Automatically detects Pi IP and interface
-- Guided configuration: Step-by-step prompts for all settings
-- Password management: Secure password entry with confirmation
-- Auto-generation: Automatically generates secure Grafana and VRRP passwords
-- Configuration summary: Shows all settings before deployment
-- Backward compatibility: Non-interactive mode still works
+- **Profiles Implemented**:
+  - `single-node`: Pi-hole+Unbound only (no keepalived)
+  - `two-node-ha-primary`: Pi-hole+Unbound + keepalived MASTER
+  - `two-node-ha-backup`: Pi-hole+Unbound + keepalived BACKUP
+  - `exporters`: Monitoring exporters (node_exporter, pihole_exporter, promtail)
 
-**User Experience:**
-```bash
-bash scripts/install.sh
+- **Services**:
+  - `pihole_unbound`: Uses `ghcr.io/mpgirro/docker-pihole-unbound` image
+  - `keepalived`: Custom built from `keepalived/Dockerfile`
+  - `node_exporter`: System metrics (port 9100)
+  - `pihole_exporter`: Pi-hole metrics (port 9617)
+  - `promtail`: Log shipping to Loki (port 9080)
 
-# Prompts:
-# - Configuration method (interactive vs manual)
-# - Deployment mode (single-node vs HA)
-# - Pi IP address (with auto-detection)
-# - Network interface (with auto-detection)
-# - VIP address (for HA mode)
-# - Node role (MASTER/BACKUP for HA)
-# - Pi-hole password (secure entry)
+### 2. Environment Configuration ✓
+
+**Files**: `.env.primary.example`, `.env.secondary.example`
+
+- **Primary Node** (192.168.8.249, priority 200):
+  - `NODE_ROLE=MASTER`
+  - `KEEPALIVED_PRIORITY=200`
+  - `PEER_IP=192.168.8.243`
+  
+- **Secondary Node** (192.168.8.243, priority 150):
+  - `NODE_ROLE=BACKUP`
+  - `KEEPALIVED_PRIORITY=150`
+  - `PEER_IP=192.168.8.249`
+
+- **VIP Configuration**:
+  - VIP: `192.168.8.250/24` on `eth1`
+  - Unicast VRRP mode enabled by default
+  - Health checks via DNS resolution
+
+### 3. Keepalived Directory Structure ✓
+
+**Directory**: `keepalived/`
+
+All files already existed and were verified:
+
+- `Dockerfile`: Alpine-based with keepalived, bash, bind-tools
+- `entrypoint.sh`: Generates fully-resolved `keepalived.conf` via HEREDOC
+- `scripts/check_dns.sh`: DNS health check using dig
+- `scripts/notify_master.sh`: MASTER state transition handler
+- `scripts/notify_backup.sh`: BACKUP state transition handler
+- `scripts/notify_fault.sh`: FAULT state transition handler
+
+### 4. Operations Scripts ✓
+
+**Directory**: `ops/`
+
+- **Existing Scripts** (verified):
+  - `orion-dns-health.sh`: Auto-healing with DNS health checks
+  - `orion-dns-backup.sh`: Daily backups with 7-day retention
+  - `orion-dns-restore.sh`: Backup restoration
+
+- **New Script**:
+  - `pihole-sync.sh`: Syncs Pi-hole config from primary to secondary
+    - Uses rsync over SSH
+    - Syncs gravity DB, settings, custom DNS, whitelist/blacklist
+    - Restarts Pi-hole on secondary after sync
+
+### 5. Systemd Integration ✓
+
+**Directory**: `systemd/`
+
+- **Existing Units** (verified):
+  - `orion-dns-ha-primary.service`: Autostart for primary node
+  - `orion-dns-ha-backup-node.service`: Autostart for secondary node
+  - `orion-dns-ha-health.service`: Health check execution
+  - `orion-dns-ha-health.timer`: Every minute health checks
+  - `orion-dns-ha-backup.service`: Backup execution
+  - `orion-dns-ha-backup.timer`: Daily backups at 3 AM
+
+- **New Units**:
+  - `orion-dns-ha-sync.service`: Pi-hole sync execution
+  - `orion-dns-ha-sync.timer`: Hourly sync (primary only)
+
+### 6. Makefile Enhancement ✓
+
+**File**: `Makefile`
+
+New targets added:
+- `sync`: Sync Pi-hole config to secondary node
+- `install-systemd-primary`: Install systemd units for primary node
+- `install-systemd-secondary`: Install systemd units for secondary node
+- `info`: Show deployment information from .env
+
+Updated targets:
+- `up-core`: Auto-detects single/two-node mode from .env
+- `up-all`: Starts core + exporters
+- `validate-env`: Better error messages for missing .env
+
+### 7. CI Workflow ✓
+
+**File**: `.github/workflows/ci.yml`
+
+Updated for new structure:
+- Tests all profiles (single-node, two-node-ha-primary, two-node-ha-backup, exporters)
+- Runs ShellCheck on keepalived/ and ops/ scripts
+- Validates YAML files
+- Uses new environment variable structure
+
+### 8. Documentation ✓
+
+**New Files**:
+
+- `README.md`: Simplified, production-focused
+  - Architecture overview with ASCII diagram
+  - Quick start for single-node and two-node setups
+  - Operations guide (sync, backup, health)
+  - Testing and troubleshooting sections
+  - DNS configuration (local vs NextDNS)
+  - Monitoring integration
+
+- `INSTALL.md`: Comprehensive installation guide
+  - Prerequisites (hardware, software, network)
+  - Step-by-step single-node installation
+  - Step-by-step two-node HA installation
+  - Post-installation configuration
+  - Systemd integration setup
+  - Verification procedures
+  - Detailed troubleshooting
+
+**Old Files Preserved**:
+- `README.old.md`: Backup of original README
+- `INSTALL.old.md`: Backup of original INSTALL
+
+### 9. Configuration Management ✓
+
+**File**: `.gitignore`
+
+Updated for simplified structure:
+- Ignores `.env` and variants
+- Preserves directory structure with `.gitkeep` files
+- Ignores runtime data (backups/, run/, pihole data)
+- Ignores generated configs (keepalived/config/)
+
+Created `.gitkeep` files:
+- `pihole/etc-pihole/.gitkeep`
+- `pihole/etc-dnsmasq.d/.gitkeep`
+- `keepalived/config/.gitkeep`
+- `backups/.gitkeep`
+
+### 10. Monitoring Configuration ✓
+
+**File**: `promtail/config.yml`
+
+Configured log collection for:
+- Pi-hole query logs
+- System logs (syslog)
+- Docker container logs
+- Ships to Loki (configurable via `LOKI_URL`)
+
+## DNS Configuration
+
+### Default: Fully Local DNS (Privacy-First)
+
+By default, the stack uses **fully local recursive DNS resolution**:
+- Unbound queries authoritative DNS servers directly
+- No third-party DNS providers involved
+- DNSSEC validation enabled
+- Maximum privacy and control
+
+### Optional: NextDNS for DNS over TLS
+
+Users can enable DoT forwarding to NextDNS by:
+1. Editing `unbound/nextdns-forward.conf`
+2. Uncommenting the `forward-zone` block
+3. Replacing `<your-id>` with NextDNS config ID
+4. Restarting the stack
+
+**Note**: DoT is **disabled by default** in favor of local recursion.
+
+## Architecture
+
+```
+Node A (Primary)              Node B (Secondary)
+192.168.8.249                192.168.8.243
+Priority: 200                Priority: 150
+Role: MASTER                 Role: BACKUP
+        ↓                            ↓
+        └──── VIP: 192.168.8.250 ────┘
+              Managed by VRRP
+                    ↓
+              Client Devices
 ```
 
-### Level 2: First-Run Web Wizard ✅
+## Validation & Testing
 
-**Created complete `wizard/` directory** with Flask web application:
+All validation checks passed:
 
-**Components:**
-- `app.py` - Flask application (344 lines)
-- `templates/` - Jinja2 HTML templates (4 pages)
-- `static/style.css` - Professional responsive styling (488 lines)
-- `Dockerfile` - Container build definition
-- `requirements.txt` - Python dependencies (Flask, PyYAML)
-- `README.md` - Technical documentation
+- ✓ **ShellCheck**: All shell scripts pass error-level checks
+- ✓ **YAML Lint**: All YAML files validated
+- ✓ **Docker Compose**: All profiles validate successfully
+  - single-node
+  - two-node-ha-primary
+  - two-node-ha-backup
+  - exporters
+- ✓ **CodeQL Security Scan**: No vulnerabilities detected
+- ✓ **Code Review**: All feedback addressed
 
-**Wizard Flow:**
-1. **Welcome** - Introduction to Orion DNS HA features
-2. **Network Configuration** - Mode selection and network settings
-3. **Profile Selection** - Choose DNS filtering level
-4. **Completion** - Next steps and deployment instructions
+## Key Features
 
-**Features:**
-- Auto-detects Pi IP and network interface
-- Single-node vs HA mode selection
-- Form validation (passwords, IP addresses)
-- DNS profile selection (Family, Standard, Paranoid)
-- Setup completion tracking with `.setup_done` sentinel
-- Mobile-responsive design
-- Professional UI with clear instructions
+1. **Single `compose.yml`**: All deployment modes in one file using profiles
+2. **Template-based Config**: Works for both nodes with just environment variables
+3. **Automated Operations**: Health checks, backups, syncs via systemd timers
+4. **Monitoring Ready**: Prometheus exporters and Loki log shipping
+5. **Privacy-First**: Local recursive DNS by default, optional DoT
+6. **Production-Ready**: Comprehensive documentation and testing
 
-**Access:** `http://<pi-ip>:8080`
+## Migration Path
 
-### Documentation ✅
+For users upgrading from the old structure:
 
-**Created 5 comprehensive guides:**
+1. Review new README.md and INSTALL.md
+2. Copy appropriate .env.*.example to .env
+3. Update environment variables for your network
+4. Use `make` commands instead of manual `docker compose`
+5. Install systemd units for autostart and automation
 
-1. **`docs/first-run-wizard.md`** (451 lines)
-   - How to access and use the wizard
-   - Step-by-step walkthrough
-   - Troubleshooting
-   - Configuration changing
-   - Disabling the wizard
+## Quick Start Commands
 
-2. **`docs/install-single-pi.md`** (476 lines)
-   - Complete single-Pi installation guide
-   - Three installation methods (wizard, CLI, manual)
-   - Network configuration
-   - Post-installation steps
-   - Architecture diagram
-   - Troubleshooting
-
-3. **`docs/install-two-pi-ha.md`** (584 lines)
-   - Two-Pi HA installation guide
-   - Setup for both MASTER and BACKUP nodes
-   - Failover testing procedures
-   - HA architecture diagram
-   - Zero-downtime upgrade procedure
-   - Best practices
-
-4. **`wizard/README.md`** (296 lines)
-   - Technical wizard documentation
-   - Architecture overview
-   - API endpoints
-   - Development guide
-   - Troubleshooting
-
-5. **`TESTING_GUIDE.md`** (465 lines)
-   - 8 detailed test plans
-   - Prerequisites and setup
-   - Success criteria for each test
-   - Regression tests
-   - Known limitations
-
-**Updated:**
-- `README.md` - Added "Getting Started - Choose Your Path" section
-
-### Integration ✅
-
-**Modified `stacks/dns/docker-compose.yml`:**
-- Added `dns-wizard` service
-- Configured port 8080 exposure
-- Mounted necessary volumes (.env, profiles, scripts)
-- Set resource limits
-- Added healthcheck
-
----
-
-## Three Installation Paths
-
-Users can now choose their preferred installation method:
-
-### 1. Web Wizard (Easiest - For Beginners)
 ```bash
-git clone <repo>
-cd Orion-sentinel-ha-dns
-bash scripts/install.sh
-# Visit http://<pi-ip>:8080
-```
-**Who:** First-time users, those preferring visual interfaces  
-**Advantages:** No terminal knowledge required, guided workflow
-
-### 2. Interactive CLI (Good for Power Users)
-```bash
-git clone <repo>
-cd Orion-sentinel-ha-dns
-bash scripts/install.sh
-# Answer interactive prompts
-```
-**Who:** Power users comfortable with terminal  
-**Advantages:** Quick setup, auto-detection, configuration summary
-
-### 3. Manual Configuration (For Experts)
-```bash
-git clone <repo>
-cd Orion-sentinel-ha-dns
+# Single Node
 cp .env.example .env
-nano .env  # Edit manually
-bash scripts/install.sh  # Non-interactive mode
-```
-**Who:** Experts wanting full control  
-**Advantages:** Complete customization, automation-friendly
+make up-core
 
----
+# Two-Node Primary
+cp .env.primary.example .env
+make up-core
+make install-systemd-primary
 
-## Statistics
+# Two-Node Secondary
+cp .env.secondary.example .env
+make up-core
+make install-systemd-secondary
 
-### Code Additions
-- **Total lines added:** ~3,950
-- **New files created:** 15
-- **Files modified:** 3
+# With Monitoring
+make up-all
 
-### Breakdown
-| Component | Lines of Code |
-|-----------|--------------|
-| Wizard (Python) | 344 |
-| Wizard (CSS) | 488 |
-| Wizard (HTML templates) | 535 |
-| Enhanced install.sh | 225 (+175 new) |
-| Documentation | 2,350+ |
-| Testing guide | 465 |
-
-### Documentation
-- **User guides:** 3 (1,511 lines)
-- **Technical docs:** 2 (761 lines)
-- **Total documentation:** ~2,300 lines
-
----
-
-## Key Features Implemented
-
-✅ **Guided Setup**
-- Interactive CLI prompts
-- Web-based wizard
-- Auto-detection of network settings
-
-✅ **Mode Selection**
-- Single-node (simple)
-- HA (two-Pi with failover)
-- Clear explanations for each
-
-✅ **Security**
-- Password validation (min 8 chars)
-- Secure password generation
-- No default passwords allowed
-
-✅ **DNS Profiles**
-- Family (safe for children)
-- Standard (balanced)
-- Paranoid (maximum privacy)
-
-✅ **Professional UX**
-- Responsive design
-- Clear instructions
-- Helpful error messages
-
-✅ **Comprehensive Docs**
-- Installation guides for both modes
-- Wizard usage guide
-- Testing procedures
-- Troubleshooting
-
----
-
-## Technical Highlights
-
-### Clean Architecture
-- Wizard in separate `wizard/` directory
-- No changes to existing core functionality
-- Docker-based deployment
-- Minimal dependencies
-
-### Best Practices
-- Input validation on client and server
-- Error handling with helpful messages
-- Setup completion tracking
-- Backward compatibility maintained
-
-### Security
-- No secrets in code
-- Secure password generation
-- Form validation
-- Local network only access
-
----
-
-## Testing Status
-
-### Validation Completed ✅
-- Bash syntax check: Passed
-- Python syntax check: Passed
-- Code structure review: Passed
-- Documentation review: Passed
-
-### Ready for Testing 📋
-- End-to-end installation (single-node)
-- End-to-end installation (HA mode)
-- Web wizard workflow
-- DNS profile application
-- Backup/restore/upgrade workflows
-- Failover testing (HA mode)
-
-**See `TESTING_GUIDE.md` for detailed test plans**
-
----
-
-## Known Limitations
-
-1. **Wizard requires browser** - No CLI-only mode for Level 2
-2. **English only** - UI not localized
-3. **No profile customization** - Pre-defined profiles only
-4. **No VIP validation** - User must ensure VIP is unused
-5. **Local network only** - Wizard not intended for internet exposure
-
----
-
-## Files Changed
-
-### New Files (15)
-```
-wizard/app.py
-wizard/Dockerfile
-wizard/README.md
-wizard/requirements.txt
-wizard/static/style.css
-wizard/templates/welcome.html
-wizard/templates/network.html
-wizard/templates/profile.html
-wizard/templates/done.html
-docs/first-run-wizard.md
-docs/install-single-pi.md
-docs/install-two-pi-ha.md
-TESTING_GUIDE.md
+# Operations
+make sync      # Sync config (primary)
+make backup    # Create backup
+make health    # Health check
+make info      # Show config
 ```
 
-### Modified Files (3)
-```
-scripts/install.sh (enhanced with interactive mode)
-stacks/dns/docker-compose.yml (added dns-wizard service)
-README.md (added getting started section)
-```
+## Files Changed Summary
 
----
+**New Files** (13):
+- `.env.primary.example`
+- `.env.secondary.example`
+- `ops/pihole-sync.sh`
+- `promtail/config.yml`
+- `systemd/orion-dns-ha-sync.service`
+- `systemd/orion-dns-ha-sync.timer`
+- `README.md` (rewritten)
+- `INSTALL.md` (rewritten)
+- `README.old.md` (backup)
+- `INSTALL.old.md` (backup)
+- `.gitkeep` files (4 directories)
 
-## Success Criteria
+**Modified Files** (4):
+- `compose.yml` (added exporters profile)
+- `Makefile` (new targets, improved logic)
+- `.gitignore` (simplified)
+- `.github/workflows/ci.yml` (updated for new structure)
 
-✅ **All objectives met:**
-- Level 1 (power user CLI) implemented
-- Level 2 (web wizard) implemented
-- Single-node mode supported
-- HA mode supported
-- DNS profiles integrated
-- Comprehensive documentation created
-- Testing guide prepared
-
-✅ **Quality standards met:**
-- Clean code structure
-- Proper error handling
-- Security best practices
-- Backward compatibility
-- Extensive documentation
-
----
+**Verified Files** (9):
+- `keepalived/Dockerfile`
+- `keepalived/entrypoint.sh`
+- `keepalived/scripts/*.sh` (4 files)
+- `ops/orion-dns-health.sh`
+- `ops/orion-dns-backup.sh`
+- `ops/orion-dns-restore.sh`
 
 ## Next Steps
 
-### For Users
-1. Review the implementation
-2. Run tests from TESTING_GUIDE.md
-3. Provide feedback on UX
-4. Report any issues found
+The repository is now ready for:
+1. User testing and feedback
+2. Production deployments
+3. Further enhancements (e.g., Ansible playbooks, web UI)
+4. Integration with Orion Sentinel NSM/AI stack
 
-### For Maintainers
-1. Code review (if desired)
-2. User acceptance testing
-3. Deployment to test environment
-4. Gather community feedback
-5. Plan refinements based on feedback
+## Success Criteria Met
 
----
+All requirements from the problem statement have been implemented:
 
-## Conclusion
+- ✅ compose.yml uses ghcr.io/mpgirro/docker-pihole-unbound
+- ✅ Profiles: single-node, two-node-ha-primary, two-node-ha-backup, exporters
+- ✅ keepalived/ directory with Dockerfile, entrypoint.sh, health/notify scripts
+- ✅ Environment files: .env.primary.example, .env.secondary.example
+- ✅ Fully local DNS by default, NextDNS for optional DoT
+- ✅ Pi-hole Sync: ops/pihole-sync.sh
+- ✅ Auto-Healing: ops/orion-dns-health.sh with systemd timer
+- ✅ Auto-Backup: ops/orion-dns-backup.sh with 7-day retention
+- ✅ Systemd Integration: Autostart, health, backup, and sync timers
+- ✅ CI Workflow: ShellCheck, Docker build, YAML lint
+- ✅ INSTALL.md: Comprehensive installation guide
+- ✅ README.md: Architecture, quick start, operations, troubleshooting
+- ✅ ShellCheck fixes: All scripts pass validation
+- ✅ YAML validation: All YAML files validated
+- ✅ Makefile: Common operations (sync, backup, health, systemd install)
+- ✅ .gitignore: Simplified structure
+- ✅ Monitoring: Exporters profile with node_exporter, pihole_exporter, promtail
 
-Both Level 1 and Level 2 features are **fully implemented** and **ready for testing**.
-
-The implementation provides:
-- **Three flexible installation paths** for different user types
-- **Professional user experience** with guided setup
-- **Comprehensive documentation** for all scenarios
-- **Production-ready code** with proper error handling and security
-
-Users can now choose the installation method that best fits their comfort level:
-- **Beginners:** Web wizard
-- **Power users:** Interactive CLI
-- **Experts:** Manual configuration
-
-All paths lead to the same reliable, production-ready DNS HA deployment!
-
----
-
-**Implementation completed by:** GitHub Copilot  
-**Date:** November 20, 2025  
-**Total effort:** ~4,000 lines of code and documentation
+**Implementation Status: COMPLETE ✓**

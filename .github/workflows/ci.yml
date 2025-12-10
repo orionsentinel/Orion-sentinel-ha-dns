@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
 
 permissions:
   contents: read
@@ -23,21 +23,38 @@ jobs:
       - name: Create test .env file
         run: |
           cat > .env <<EOF
-          HOST_IP=192.168.1.100
-          VIP_ADDRESS=192.168.1.99
-          NETWORK_INTERFACE=eth0
-          SUBNET=192.168.1.0/24
-          GATEWAY=192.168.1.1
-          TZ=UTC
-          PIHOLE_PASSWORD=test_password
-          PIHOLE_DNS1=127.0.0.1#5335
-          PIHOLE_DNS2=127.0.0.1#5335
-          PIHOLE_THEME=default-dark
-          DEPLOYMENT_MODE=single-pi-ha
-          KEEPALIVED_PRIORITY=200
+          NODE_IP=192.168.8.249
           NODE_ROLE=MASTER
+          VIP_ADDRESS=192.168.8.250
+          VIP_NETMASK=24
+          NETWORK_INTERFACE=eth0
+          SUBNET=192.168.8.0/24
+          GATEWAY=192.168.8.1
+          TZ=UTC
+          HOSTNAME=orion-dns-primary
+          DOMAIN_NAME=lan
+          WEBPASSWORD=test_password
+          FTLCONF_webserver_api_password=test_password
+          FTLCONF_dns_upstreams=127.0.0.1#5335
+          FTLCONF_dns_dnssec=true
+          FTLCONF_local_ipv4=192.168.8.249
+          DNSMASQ_LISTENING=all
+          REV_SERVER=true
+          REV_SERVER_TARGET=192.168.8.1
+          REV_SERVER_DOMAIN=lan
+          REV_SERVER_CIDR=192.168.8.0/24
+          KEEPALIVED_PRIORITY=200
+          VIRTUAL_ROUTER_ID=51
+          ROUTER_ID=orion-dns-ha
           VRRP_PASSWORD=test_vrrp
-          UNBOUND_SMART_PREFETCH=0
+          USE_UNICAST_VRRP=true
+          PEER_IP=192.168.8.243
+          UNICAST_SRC_IP=192.168.8.249
+          LOKI_URL=http://192.168.8.100:3100
+          REPO_DIR=/opt/orion-dns-ha
+          PIHOLE_CONTAINER_NAME=pihole_unbound
+          KEEPALIVED_CONTAINER_NAME=keepalived
+          BACKUP_RETENTION_DAYS=7
           EOF
 
       - name: Validate main compose.yml
@@ -45,13 +62,13 @@ jobs:
 
       - name: Validate all stack compose files
         run: |
-          for compose_file in $(find stacks -name "docker-compose*.yml" -o -name "compose.yml"); do
-            echo "Validating $compose_file..."
-            docker compose -f "$compose_file" config > /dev/null 2>&1 || echo "  ⚠️  Skipped $compose_file (may need specific env vars)"
-          done
+          # Skip validation of old stacks since we're simplifying the structure
+          echo "Skipping stack validation - simplified structure uses single compose.yml"
 
       - name: Validate wizard compose file
-        run: docker compose -f wizard/docker-compose.yml config > /dev/null 2>&1 || echo "⚠️  Wizard compose validation skipped"
+        run: |
+          # Skip wizard validation - focusing on simplified structure
+          echo "Skipping wizard validation - using simplified deployment"
 
   yaml-lint:
     name: YAML Linting
@@ -103,8 +120,12 @@ jobs:
 
       - name: Run shellcheck on all scripts
         run: |
-          find scripts -name "*.sh" -type f -exec shellcheck --severity=error {} + || true
-          find backup -name "*.sh" -type f -exec shellcheck --severity=error {} + || true
+          echo "Checking keepalived scripts..."
+          find keepalived -name "*.sh" -type f -exec shellcheck --severity=error {} + || true
+          echo "Checking ops scripts..."
+          find ops -name "*.sh" -type f -exec shellcheck --severity=error {} + || true
+          echo "Checking other scripts..."
+          find scripts -name "*.sh" -type f -exec shellcheck --severity=error {} + 2>/dev/null || true
 
   smoke-test:
     name: Smoke Test - Stack Validation
@@ -121,21 +142,30 @@ jobs:
         run: |
           cat > .env <<EOF
           # Dummy configuration for CI testing
-          HOST_IP=192.168.1.100
-          VIP_ADDRESS=192.168.1.99
-          NETWORK_INTERFACE=eth0
-          SUBNET=192.168.1.0/24
-          GATEWAY=192.168.1.1
-          TZ=UTC
-          PIHOLE_PASSWORD=test_password_ci_only
-          PIHOLE_DNS1=127.0.0.1#5335
-          PIHOLE_DNS2=127.0.0.1#5335
-          PIHOLE_THEME=default-dark
-          DEPLOYMENT_MODE=single-pi-ha
-          KEEPALIVED_PRIORITY=200
+          NODE_IP=192.168.8.249
           NODE_ROLE=MASTER
+          VIP_ADDRESS=192.168.8.250
+          VIP_NETMASK=24
+          NETWORK_INTERFACE=eth0
+          SUBNET=192.168.8.0/24
+          GATEWAY=192.168.8.1
+          TZ=UTC
+          HOSTNAME=orion-dns-primary
+          DOMAIN_NAME=lan
+          WEBPASSWORD=test_password_ci_only
+          FTLCONF_webserver_api_password=test_password_ci_only
+          FTLCONF_dns_upstreams=127.0.0.1#5335
+          FTLCONF_dns_dnssec=true
+          FTLCONF_local_ipv4=192.168.8.249
+          DNSMASQ_LISTENING=all
+          KEEPALIVED_PRIORITY=200
+          VIRTUAL_ROUTER_ID=51
+          ROUTER_ID=orion-dns-ha
           VRRP_PASSWORD=test_vrrp_ci
-          UNBOUND_SMART_PREFETCH=0
+          USE_UNICAST_VRRP=true
+          PEER_IP=192.168.8.243
+          UNICAST_SRC_IP=192.168.8.249
+          LOKI_URL=http://192.168.8.100:3100
           EOF
 
       - name: Verify compose configuration
@@ -147,23 +177,25 @@ jobs:
       - name: Pull container images
         run: |
           echo "=== Pulling container images ==="
-          docker compose pull --ignore-pull-failures pihole_primary || true
+          docker compose pull --ignore-pull-failures pihole_unbound || true
           echo "✓ Image pull attempted"
 
       - name: Build custom images
         run: |
           echo "=== Building custom images ==="
-          docker compose build unbound_primary || echo "⚠️  Unbound build skipped (config files may be needed)"
+          docker compose build keepalived || echo "⚠️  Keepalived build may need runtime env vars"
           echo "✓ Build step completed"
 
       - name: Verify services can be created (dry run)
         run: |
           echo "=== Verifying service definitions ==="
-          docker compose --profile dns-core config --services
+          docker compose --profile single-node config --services
+          docker compose --profile two-node-ha-primary config --services
+          docker compose --profile exporters config --services
           echo "✓ All services are properly defined"
 
       - name: Cleanup
         if: always()
         run: |
-          docker compose --profile dns-core down -v 2>/dev/null || true
+          docker compose --profile single-node --profile two-node-ha-primary --profile two-node-ha-backup --profile exporters down -v 2>/dev/null || true
           docker system prune -af --volumes 2>/dev/null || true

@@ -1,0 +1,15 @@
+[Unit]
+Description=Orion DNS HA - Pi-hole Config Sync Timer
+Documentation=https://github.com/orionsentinel/Orion-sentinel-ha-dns
+Requires=orion-dns-ha-sync.service
+
+[Timer]
+# Run sync every hour
+OnCalendar=hourly
+# Run 10 minutes after boot to ensure network is ready
+OnBootSec=10min
+# Run immediately if we missed a scheduled run
+Persistent=true
+
+[Install]
+WantedBy=timers.target

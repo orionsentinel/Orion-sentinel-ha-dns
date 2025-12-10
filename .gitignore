@@ -1,42 +1,40 @@
+# Python
 __pycache__/
 *.pyc
+
+# Environment files (contain secrets)
 .env
+.env.local
+.env.*.local
 
-# BUT: Track .env symlinks in stack directories (they point to ../../.env)
-!stacks/dns/.env
-!stacks/observability/.env
-!stacks/ai-watchdog/.env
-
-# VPN Edition sensitive configuration files
-.env.vpn
-**/.env.vpn
-*.env.vpn
-
-# WireGuard configuration (contains private keys and peer configs)
-**/wireguard/*.conf
-**/wireguard/*.key
-**/wireguard/*.png
-config/wireguard/*
-!config/wireguard/README.md
-
-# Docker compose override files (user-specific customizations)
-docker-compose.override.yml
-
-# Signal CLI configuration (contains sensitive keys and registration data)
-stacks/observability/signal-cli-config/*
-!stacks/observability/signal-cli-config/README.md
-*.log
-*-report.md
-
-# Backups directory (created by backup-config.sh)
+# Backups directory (created by ops/orion-dns-backup.sh)
 backups/
 !backups/.gitkeep
 
 # Runtime state directory (created by ops/orion-dns-health.sh)
 run/
 
-# TLS certificates for DoH/DoT gateway (security sensitive)
-stacks/dns/blocky/certs/*.key
-stacks/dns/blocky/certs/*.crt
-stacks/dns/blocky/certs/*.pem
-!stacks/dns/blocky/certs/.gitkeep
+# Pi-hole data directories
+pihole/etc-pihole/*
+!pihole/etc-pihole/.gitkeep
+pihole/etc-dnsmasq.d/*
+!pihole/etc-dnsmasq.d/.gitkeep
+
+# Keepalived runtime config (generated at runtime)
+keepalived/config/*
+!keepalived/config/.gitkeep
+
+# Promtail positions file
+promtail/positions.yaml
+
+# Logs
+*.log
+*-report.md
+
+# Docker compose override files (user-specific customizations)
+docker-compose.override.yml
+
+# Temporary files
+*.tmp
+*.swp
+*~

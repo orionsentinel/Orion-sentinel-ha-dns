@@ -38,24 +38,42 @@ help: ## Show this help message
 	@if [ -f .env ]; then \
 		echo "  ✓ .env file found"; \
 	else \
-		echo "  ✗ .env file NOT found - copy .env.example to .env first"; \
+		echo "  ✗ .env file NOT found - copy .env.primary.example or .env.secondary.example to .env first"; \
 	fi
 
 validate-env: ## Validate environment configuration
 	@echo "$(BOLD)Validating environment configuration...$(NC)"
 	@if [ ! -f .env ]; then \
-		echo "$(RED)Error: .env file not found. Copy .env.example to .env first.$(NC)"; \
+		echo "$(RED)Error: .env file not found.$(NC)"; \
+		echo "$(YELLOW)For PRIMARY node: cp .env.primary.example .env$(NC)"; \
+		echo "$(YELLOW)For SECONDARY node: cp .env.secondary.example .env$(NC)"; \
 		exit 1; \
 	fi
-	@bash scripts/validate-env.sh
+	@if [ -f scripts/validate-env.sh ]; then \
+		bash scripts/validate-env.sh; \
+	else \
+		echo "$(GREEN)✓ .env file exists$(NC)"; \
+	fi
 
 up-core: validate-env ## Start core DNS services (pihole + unbound + keepalived)
 	@echo "$(BOLD)Starting core DNS services...$(NC)"
-	docker compose --profile dns-core up -d
+	@if grep -q "NODE_ROLE=MASTER" .env 2>/dev/null || grep -q "NODE_ROLE=BACKUP" .env 2>/dev/null; then \
+		if grep -q "NODE_ROLE=MASTER" .env 2>/dev/null; then \
+			docker compose --profile two-node-ha-primary up -d; \
+		else \
+			docker compose --profile two-node-ha-backup up -d; \
+		fi; \
+	else \
+		docker compose --profile single-node up -d; \
+	fi
 	@echo "$(GREEN)✓ Core services started$(NC)"
 	@echo ""
-	@echo "Access Pi-hole admin at: http://$(HOST_IP)/admin"
-	@echo "DNS server available at: $(VIP_ADDRESS)"
+	@if [ -n "$${VIP_ADDRESS:-}" ]; then \
+		echo "DNS server available at: $${VIP_ADDRESS}"; \
+		echo "Access Pi-hole admin at: http://$${VIP_ADDRESS}/admin"; \
+	else \
+		echo "Access Pi-hole admin at: http://$${NODE_IP:-localhost}/admin"; \
+	fi
 
 up-exporters: validate-env ## Start monitoring exporters
 	@echo "$(BOLD)Starting monitoring exporters...$(NC)"
@@ -64,15 +82,31 @@ up-exporters: validate-env ## Start monitoring exporters
 
 up-all: validate-env ## Start all services (core + exporters)
 	@echo "$(BOLD)Starting all services...$(NC)"
-	docker compose --profile dns-core --profile exporters up -d
+	@if grep -q "NODE_ROLE=MASTER" .env 2>/dev/null || grep -q "NODE_ROLE=BACKUP" .env 2>/dev/null; then \
+		if grep -q "NODE_ROLE=MASTER" .env 2>/dev/null; then \
+			docker compose --profile two-node-ha-primary --profile exporters up -d; \
+		else \
+			docker compose --profile two-node-ha-backup --profile exporters up -d; \
+		fi; \
+	else \
+		docker compose --profile single-node --profile exporters up -d; \
+	fi
 	@echo "$(GREEN)✓ All services started$(NC)"
 	@echo ""
-	@echo "Access Pi-hole admin at: http://$(HOST_IP)/admin"
-	@echo "DNS server available at: $(VIP_ADDRESS)"
+	@if [ -n "$${VIP_ADDRESS:-}" ]; then \
+		echo "DNS server available at: $${VIP_ADDRESS}"; \
+		echo "Access Pi-hole admin at: http://$${VIP_ADDRESS}/admin"; \
+	else \
+		echo "Access Pi-hole admin at: http://$${NODE_IP:-localhost}/admin"; \
+	fi
+	@echo "Monitoring exporters:"
+	@echo "  - Node exporter: http://$${NODE_IP:-localhost}:9100/metrics"
+	@echo "  - Pi-hole exporter: http://$${NODE_IP:-localhost}:9617/metrics"
+	@echo "  - Promtail: http://$${NODE_IP:-localhost}:9080/ready"
 
 down: ## Stop all services
 	@echo "$(BOLD)Stopping all services...$(NC)"
-	docker compose --profile dns-core --profile exporters down
+	docker compose --profile single-node --profile two-node-ha-primary --profile two-node-ha-backup --profile exporters down
 	@echo "$(GREEN)✓ All services stopped$(NC)"
 
 restart: down up-core ## Restart all services
@@ -85,10 +119,14 @@ logs-follow: ## Follow logs from all running services
 
 health-check: ## Run comprehensive health check
 	@echo "$(BOLD)Running health checks...$(NC)"
-	@if [ -f scripts/dns-health.sh ]; then \
+	@if [ -f ops/orion-dns-health.sh ]; then \
+		bash ops/orion-dns-health.sh; \
+	elif [ -f scripts/dns-health.sh ]; then \
 		bash scripts/dns-health.sh; \
-	else \
+	elif [ -f scripts/health-check.sh ]; then \
 		bash scripts/health-check.sh; \
+	else \
+		echo "$(YELLOW)No health check script found$(NC)"; \
 	fi
 
 test: health-check ## Run health check (alias)
@@ -103,19 +141,24 @@ stats: ## Show container resource usage
 
 backup: ## Create backup of configuration
 	@echo "$(BOLD)Creating backup...$(NC)"
-	@bash scripts/backup-config.sh
+	@bash ops/orion-dns-backup.sh
 	@echo "$(GREEN)✓ Backup complete$(NC)"
 
 restore: ## Restore from latest backup
 	@echo "$(BOLD)Restoring from backup...$(NC)"
-	@bash scripts/restore-config.sh
+	@bash ops/orion-dns-restore.sh
 	@echo "$(GREEN)✓ Restore complete$(NC)"
+
+sync: ## Sync Pi-hole config to secondary node (run on primary)
+	@echo "$(BOLD)Syncing Pi-hole configuration to secondary node...$(NC)"
+	@bash ops/pihole-sync.sh
+	@echo "$(GREEN)✓ Sync complete$(NC)"
 
 clean: ## Remove all containers and volumes (DESTRUCTIVE - asks for confirmation)
 	@echo "$(RED)$(BOLD)WARNING: This will remove all containers, volumes, and data!$(NC)"
 	@read -p "Are you sure? Type 'yes' to continue: " confirm; \
 	if [ "$$confirm" = "yes" ]; then \
-		docker compose --profile dns-core --profile exporters down -v; \
+		docker compose --profile single-node --profile two-node-ha-primary --profile two-node-ha-backup --profile exporters down -v; \
 		echo "$(GREEN)✓ Cleaned up$(NC)"; \
 	else \
 		echo "Cancelled."; \
@@ -133,25 +176,62 @@ dev-logs: ## Show detailed logs with timestamps
 	docker compose logs -f --timestamps
 
 dev-shell-pihole: ## Open shell in pihole container
-	docker compose exec pihole_primary bash
-
-dev-shell-unbound: ## Open shell in unbound container
-	docker compose exec unbound_primary sh
+	docker compose exec pihole_unbound bash
 
 # Information targets
 info: ## Show deployment information
 	@echo "$(BOLD)Deployment Information:$(NC)"
-	@echo "  Mode: $${DEPLOYMENT_MODE:-single-pi-ha}"
-	@echo "  Host IP: $(HOST_IP)"
-	@echo "  VIP Address: $(VIP_ADDRESS)"
-	@echo "  Network Interface: $(NETWORK_INTERFACE)"
-	@echo "  Keepalived Priority: $(KEEPALIVED_PRIORITY)"
+	@if [ -f .env ]; then \
+		set -a && . ./.env && set +a; \
+		echo "  Node Role: $${NODE_ROLE:-single-node}"; \
+		echo "  Node IP: $${NODE_IP:-not set}"; \
+		echo "  VIP Address: $${VIP_ADDRESS:-not set}"; \
+		echo "  Network Interface: $${NETWORK_INTERFACE:-eth0}"; \
+		echo "  Keepalived Priority: $${KEEPALIVED_PRIORITY:-not set}"; \
+	else \
+		echo "  No .env file found"; \
+		echo "  Copy .env.primary.example or .env.secondary.example to .env first"; \
+	fi
+
+# Systemd Integration
+install-systemd-primary: ## Install systemd units for PRIMARY node
+	@echo "$(BOLD)Installing systemd units for PRIMARY node...$(NC)"
+	sudo cp systemd/orion-dns-ha-primary.service /etc/systemd/system/
+	sudo cp systemd/orion-dns-ha-health.service /etc/systemd/system/
+	sudo cp systemd/orion-dns-ha-health.timer /etc/systemd/system/
+	sudo cp systemd/orion-dns-ha-backup.service /etc/systemd/system/
+	sudo cp systemd/orion-dns-ha-backup.timer /etc/systemd/system/
+	sudo cp systemd/orion-dns-ha-sync.service /etc/systemd/system/
+	sudo cp systemd/orion-dns-ha-sync.timer /etc/systemd/system/
+	sudo systemctl daemon-reload
+	@echo "$(GREEN)✓ Systemd units installed$(NC)"
+	@echo ""
+	@echo "Enable and start services with:"
+	@echo "  sudo systemctl enable --now orion-dns-ha-primary.service"
+	@echo "  sudo systemctl enable --now orion-dns-ha-health.timer"
+	@echo "  sudo systemctl enable --now orion-dns-ha-backup.timer"
+	@echo "  sudo systemctl enable --now orion-dns-ha-sync.timer"
+
+install-systemd-secondary: ## Install systemd units for SECONDARY node
+	@echo "$(BOLD)Installing systemd units for SECONDARY node...$(NC)"
+	sudo cp systemd/orion-dns-ha-backup-node.service /etc/systemd/system/
+	sudo cp systemd/orion-dns-ha-health.service /etc/systemd/system/
+	sudo cp systemd/orion-dns-ha-health.timer /etc/systemd/system/
+	sudo cp systemd/orion-dns-ha-backup.service /etc/systemd/system/
+	sudo cp systemd/orion-dns-ha-backup.timer /etc/systemd/system/
+	sudo systemctl daemon-reload
+	@echo "$(GREEN)✓ Systemd units installed$(NC)"
+	@echo ""
+	@echo "Enable and start services with:"
+	@echo "  sudo systemctl enable --now orion-dns-ha-backup-node.service"
+	@echo "  sudo systemctl enable --now orion-dns-ha-health.timer"
+	@echo "  sudo systemctl enable --now orion-dns-ha-backup.timer"
 
 version: ## Show versions of components
 	@echo "$(BOLD)Component Versions:$(NC)"
 	@echo -n "  Docker: "
-	@docker version --format '{{.Server.Version}}'
+	@docker version --format '{{.Server.Version}}' 2>/dev/null || echo "not available"
 	@echo -n "  Docker Compose: "
-	@docker compose version --short
+	@docker compose version --short 2>/dev/null || echo "not available"
 	@echo -n "  Pi-hole: "
-	@docker compose exec pihole_primary pihole -v 2>/dev/null | head -n1 || echo "not running"
+	@docker compose exec pihole_unbound pihole -v 2>/dev/null | head -n1 || echo "not running"
