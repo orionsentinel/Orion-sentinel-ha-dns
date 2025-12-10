@@ -75,6 +75,79 @@ PROM_INSTANCE_LABEL=node-a
 
 If `PROM_PUSHGATEWAY_URL` is empty (the default), no metrics are pushed and the scripts only log to `/var/log/keepalived-notify.log`.
 
+### 🔧 Operations (PR3)
+
+Host-level operational tooling for autostart, auto-healing, and backups.
+
+#### Autostart via systemd
+
+Example systemd units are in [`systemd/`](systemd/) for managing the stack on boot:
+
+```bash
+# On PRIMARY node
+sudo cp systemd/orion-dns-ha-primary.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now orion-dns-ha-primary.service
+
+# On BACKUP node
+sudo cp systemd/orion-dns-ha-backup-node.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now orion-dns-ha-backup-node.service
+```
+
+These services call `docker compose --profile <profile> up -d` on start and `down` on stop.
+
+#### Auto-Healing
+
+The health timer runs every minute, executes the same `check_dns.sh` used by keepalived, and restarts containers on repeated failures:
+
+```bash
+# Install on BOTH nodes
+sudo cp systemd/orion-dns-ha-health.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now orion-dns-ha-health.timer
+```
+
+- Tracks consecutive DNS failures (default threshold: 2)
+- Restarts `pihole_unbound` when threshold is reached
+- Starts `keepalived` if not running
+- Logs to journald: `journalctl -u orion-dns-ha-health.service`
+
+#### Backups
+
+Daily compressed backups with automatic retention:
+
+```bash
+# Install on BOTH nodes
+sudo cp systemd/orion-dns-ha-backup.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now orion-dns-ha-backup.timer
+```
+
+**What gets backed up:**
+- `compose.yml` and `.env*` files
+- `pihole/etc-pihole/` (gravity, settings)
+- `pihole/etc-dnsmasq.d/` (dnsmasq configs)
+- `keepalived/config/` (keepalived.conf, scripts)
+
+**Backup location:** `backups/dns-ha-backup-<hostname>-YYYYMMDD-HHMMSS.tgz`
+
+**Retention:** Backups older than 14 days are automatically deleted (configurable via `BACKUP_RETENTION_DAYS`).
+
+**Restore:**
+```bash
+# Stop the stack, extract backup, start the stack
+./ops/orion-dns-restore.sh backups/dns-ha-backup-pi1-20240115-031500.tgz
+
+# Preview restore without making changes
+./ops/orion-dns-restore.sh --dry-run backups/dns-ha-backup-pi1-20240115-031500.tgz
+
+# List available backups
+./ops/orion-dns-restore.sh --list
+```
+
+See [`ops/README.md`](ops/README.md) and [`systemd/README.md`](systemd/README.md) for full details.
+
 ### 🌐 NextDNS Mode (Optional)
 
 By default, Unbound performs **fully local recursive DNS resolution** — queries go directly to authoritative DNS servers without any third-party forwarder.

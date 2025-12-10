@@ -1,0 +1,51 @@
+# =============================================================================
+# Orion DNS HA - Primary Node Service
+# =============================================================================
+#
+# This systemd service manages the Docker Compose stack on the PRIMARY node.
+# Use this on the node that should be MASTER by default (higher priority).
+#
+# Installation (on PRIMARY node only):
+#   1. Copy this file to /etc/systemd/system/orion-dns-ha-primary.service
+#   2. Run: sudo systemctl daemon-reload
+#   3. Run: sudo systemctl enable --now orion-dns-ha-primary.service
+#
+# NOTE: Only install ONE of these services per node:
+#   - orion-dns-ha-primary.service (this file) - for the primary/MASTER node
+#   - orion-dns-ha-backup.service - for the secondary/BACKUP node
+#
+# Verification:
+#   sudo systemctl status orion-dns-ha-primary.service
+#   docker ps
+#
+# =============================================================================
+
+[Unit]
+Description=Orion DNS HA Stack - Primary Node
+Documentation=https://github.com/orionsentinel/Orion-sentinel-ha-dns
+Requires=docker.service
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/orion-dns-ha
+
+# Start the stack with the primary profile
+ExecStart=/usr/bin/docker compose --profile two-node-ha-primary up -d
+
+# Stop the stack gracefully
+ExecStop=/usr/bin/docker compose --profile two-node-ha-primary down
+
+# Give containers time to start/stop
+TimeoutStartSec=120
+TimeoutStopSec=60
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=orion-dns-ha
+
+[Install]
+WantedBy=multi-user.target

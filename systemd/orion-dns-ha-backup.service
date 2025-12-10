@@ -1,0 +1,47 @@
+# =============================================================================
+# Orion DNS HA - Backup Service
+# =============================================================================
+#
+# This systemd service runs the host-level backup script.
+# It should be triggered by the companion timer (orion-dns-ha-backup.timer).
+#
+# Installation:
+#   1. Copy this file to /etc/systemd/system/orion-dns-ha-backup.service
+#   2. Copy orion-dns-ha-backup.timer to /etc/systemd/system/
+#   3. Run: sudo systemctl daemon-reload
+#   4. Run: sudo systemctl enable --now orion-dns-ha-backup.timer
+#
+# Manual run:
+#   sudo systemctl start orion-dns-ha-backup.service
+#
+# Configuration:
+#   Edit the Environment lines below or override via /etc/default/orion-dns-ha
+#
+# =============================================================================
+
+[Unit]
+Description=Orion DNS HA - backup Pi-hole and keepalived config
+Documentation=https://github.com/orionsentinel/Orion-sentinel-ha-dns
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/orion-dns-ha
+ExecStart=/opt/orion-dns-ha/ops/orion-dns-backup.sh
+TimeoutStartSec=300
+
+# Environment configuration (can be overridden)
+Environment="REPO_DIR=/opt/orion-dns-ha"
+Environment="BACKUP_RETENTION_DAYS=14"
+
+# Optional: Load from environment file if it exists
+EnvironmentFile=-/etc/default/orion-dns-ha
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=orion-dns-backup
+
+[Install]
+WantedBy=multi-user.target
