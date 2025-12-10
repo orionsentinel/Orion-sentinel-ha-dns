@@ -13,7 +13,7 @@
 # =============================================================================
 
 .PHONY: help single primary secondary primary-full secondary-full down restart logs test status clean
-.PHONY: sync backup backup-list health install-systemd
+.PHONY: sync backup backup-list health install-systemd-primary install-systemd-backup _check-install-script
 
 .DEFAULT_GOAL := help
 
@@ -166,37 +166,19 @@ health: ## Run health check
 # Systemd Installation Targets
 # =============================================================================
 
-install-systemd-primary: ## Install systemd services for primary node
+install-systemd-primary: _check-install-script ## Install systemd services for primary node
 	@echo "$(GREEN)Installing systemd services for primary node...$(NC)"
-	@if [ ! -f ./ops/install-systemd.sh ]; then \
-		echo "$(RED)Error: ./ops/install-systemd.sh not found.$(NC)"; \
-		exit 1; \
-	@echo "$(GREEN)Installing systemd services for primary node...$(NC)"
-	@if [ ! -f ./ops/install-systemd.sh ]; then \
-		echo "$(RED)Error: ./ops/install-systemd.sh not found.$(NC)"; \
-		exit 1; \
-	@echo "$(GREEN)Installing systemd services for primary node...$(NC)"
-	@if [ ! -f ./ops/install-systemd.sh ]; then \
-		echo "$(RED)Error: ./ops/install-systemd.sh not found.$(NC)"; \
-		exit 1; \
-	fi
 	@sudo ./ops/install-systemd.sh primary
 
-install-systemd-backup: ## Install systemd services for backup node
+install-systemd-backup: _check-install-script ## Install systemd services for backup node
 	@echo "$(GREEN)Installing systemd services for backup node...$(NC)"
-	@if [ ! -f ./ops/install-systemd.sh ]; then \
-		echo "$(RED)Error: ./ops/install-systemd.sh not found.$(NC)"; \
-		exit 1; \
-	fi
-	@if [ ! -f ./ops/install-systemd.sh ]; then \
-		echo "$(RED)Error: ./ops/install-systemd.sh not found.$(NC)"; \
-		exit 1; \
-	fi
-	@if [ ! -f ./ops/install-systemd.sh ]; then \
-		echo "$(RED)Error: ./ops/install-systemd.sh not found.$(NC)"; \
-		exit 1; \
-	fi
 	@sudo ./ops/install-systemd.sh backup
+
+_check-install-script:
+	@if [ ! -f ./ops/install-systemd.sh ]; then \
+		echo "$(RED)Error: ./ops/install-systemd.sh not found.$(NC)"; \
+		exit 1; \
+	fi
 
 # =============================================================================
 # Internal Targets
