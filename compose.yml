@@ -24,8 +24,9 @@ services:
       REV_SERVER_TARGET: ${REV_SERVER_TARGET:-192.168.8.1}
       REV_SERVER_DOMAIN: ${REV_SERVER_DOMAIN:-lan}
       REV_SERVER_CIDR: ${REV_SERVER_CIDR:-192.168.8.0/24}
-      # Optional: DNS over TLS upstreams for Unbound (Quad9 by default)
-      UNBOUND_FORWARD_TLS: ${UNBOUND_FORWARD_TLS:-tls://9.9.9.9:853,tls://149.112.112.112:853}
+      # Optional: DNS over TLS upstreams for Unbound (disabled by default for local recursion)
+      # If you want DoT forwarding, use NextDNS - see unbound/nextdns-forward.conf
+      UNBOUND_FORWARD_TLS: ${UNBOUND_FORWARD_TLS:-}
       UNBOUND_FORWARD_ZONES: ${UNBOUND_FORWARD_ZONES:-}
       # Optional: Redis caching support if enabled in the upstream image
       REDIS_ENABLE: ${REDIS_ENABLE:-false}
@@ -34,6 +35,10 @@ services:
     volumes:
       - ./pihole/etc-pihole:/etc/pihole
       - ./pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+      # Optional: NextDNS DoT forwarding config
+      # If the file exists, Unbound forwards to NextDNS over DoT.
+      # If absent/unmounted, Unbound performs full local recursive resolution.
+      - ./unbound/nextdns-forward.conf:/etc/unbound/unbound.conf.d/nextdns-forward.conf:ro
 
   keepalived:
     build:
@@ -65,5 +70,9 @@ services:
       CHECK_WEIGHT: ${CHECK_WEIGHT:--20}
       CHECK_FALL: ${CHECK_FALL:-2}
       CHECK_RISE: ${CHECK_RISE:-2}
+      # Prometheus Pushgateway integration (optional)
+      PROM_PUSHGATEWAY_URL: ${PROM_PUSHGATEWAY_URL:-}
+      PROM_JOB_NAME: ${PROM_JOB_NAME:-orion_dns_ha}
+      PROM_INSTANCE_LABEL: ${PROM_INSTANCE_LABEL:-}
     volumes:
       - ./keepalived/config:/etc/keepalived

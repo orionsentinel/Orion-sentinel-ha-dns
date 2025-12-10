@@ -95,4 +95,9 @@ sed 's/auth_pass .*/auth_pass ****/' "${CONFIG_PATH}"
 
 export VIP_ADDRESS NETWORK_INTERFACE NODE_ROLE ROUTER_ID
 
+# Export Prometheus Pushgateway settings for notify scripts
+export PROM_PUSHGATEWAY_URL="${PROM_PUSHGATEWAY_URL:-}"
+export PROM_JOB_NAME="${PROM_JOB_NAME:-orion_dns_ha}"
+export PROM_INSTANCE_LABEL="${PROM_INSTANCE_LABEL:-}"
+
 exec keepalived --dont-fork --log-console --log-detail --vrrp

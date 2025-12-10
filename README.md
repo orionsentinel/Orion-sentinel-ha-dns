@@ -51,6 +51,55 @@ Troubleshooting:
 - VIP not assigned: verify `NETWORK_INTERFACE=eth1`, `USE_UNICAST_VRRP=true`, and `PEER_IP` is set on both nodes.
 - Keepalived restart loop: check `/etc/keepalived/keepalived.conf` for syntax errors; auth_pass must be plain text (no `${}` or `\n` literals).
 
+### 📊 Observability (PR2)
+
+The keepalived notify scripts can push VRRP state metrics to a Prometheus Pushgateway.
+
+**Configuration:**
+
+Set these environment variables in your `.env` file or pass them to Docker Compose:
+
+```env
+PROM_PUSHGATEWAY_URL=http://pushgateway.example.com:9091
+PROM_JOB_NAME=orion_dns_ha
+PROM_INSTANCE_LABEL=node-a
+```
+
+**Metric:**
+
+- **`keepalived_vrrp_state`** - gauge indicating VRRP state
+  - Value `1` = MASTER
+  - Value `0` = BACKUP
+  - Value `-1` = FAULT
+- **Labels:** `job`, `instance`, `router_id`, `name`, `type`, `state`
+
+If `PROM_PUSHGATEWAY_URL` is empty (the default), no metrics are pushed and the scripts only log to `/var/log/keepalived-notify.log`.
+
+### 🌐 NextDNS Mode (Optional)
+
+By default, Unbound performs **fully local recursive DNS resolution** — queries go directly to authoritative DNS servers without any third-party forwarder.
+
+If you want DNS over TLS (DoT) forwarding to NextDNS:
+
+1. Edit `unbound/nextdns-forward.conf`
+2. Uncomment the `forward-zone` block
+3. Replace `<your-id>` with your NextDNS configuration ID (from https://my.nextdns.io)
+4. Restart the stack: `docker compose --profile <your-profile> restart pihole_unbound`
+
+**Example enabled config:**
+```conf
+server:
+    tls-cert-bundle: "/etc/ssl/certs/ca-certificates.crt"
+
+forward-zone:
+    name: "."
+    forward-tls-upstream: yes
+    forward-addr: 45.90.28.0@853#abc123.dns.nextdns.io
+    forward-addr: 45.90.30.0@853#abc123.dns.nextdns.io
+```
+
+To disable NextDNS and return to local recursive resolution, comment out the `forward-zone` block or delete the file.
+
 ### 📖 Production Documentation
 
 - **[🚀 QUICKSTART.production.md](QUICKSTART.production.md)** - Get running in 10 minutes ⭐ **START HERE**
