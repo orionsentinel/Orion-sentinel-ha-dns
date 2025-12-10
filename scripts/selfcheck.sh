@@ -20,8 +20,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-ERRORS=0
-WARNINGS=0
+# Use declare -i for explicit integer type
+declare -i ERRORS=0
+declare -i WARNINGS=0
 
 echo "Running Orion Sentinel HA DNS self-check..."
 echo ""
@@ -45,7 +46,9 @@ if [ -f "$REPO_DIR/promtail/config.yml" ]; then
             ERRORS=$((ERRORS + 1))
         fi
     else
-        # Basic syntax check without python - just check for obvious issues
+        # Basic syntax check without python - just verify file has basic YAML structure
+        # This is a fallback check when Python/PyYAML is unavailable and may produce
+        # false positives/negatives. Manual validation is recommended if issues arise.
         if grep -qE '^[[:space:]]*-[[:space:]]+[^-]' "$REPO_DIR/promtail/config.yml" && \
            grep -qE '^[a-zA-Z]' "$REPO_DIR/promtail/config.yml"; then
             echo -e "${YELLOW}⚠ File exists (no YAML validator available)${NC}"

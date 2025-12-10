@@ -22,7 +22,7 @@ mkdir -p "$REPO_DIR/pihole/var-log"
 # This prevents "dnsmasq: cannot open log /var/log/pihole/pihole.log: Is a directory"
 if [ -d "$REPO_DIR/pihole/var-log/pihole.log" ]; then
     echo "Warning: pihole.log exists as a directory. Removing it..."
-    rmdir "$REPO_DIR/pihole/var-log/pihole.log" 2>/dev/null || rm -rf "$REPO_DIR/pihole/var-log/pihole.log"
+    rm -rf "$REPO_DIR/pihole/var-log/pihole.log"
 fi
 touch "$REPO_DIR/pihole/var-log/pihole.log"
 

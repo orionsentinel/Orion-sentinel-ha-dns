@@ -30,6 +30,8 @@ scrape_configs:
           __path__: /var/log/syslog
 
   # Docker container logs
+  # Note: This pattern matches Docker's default JSON log driver format.
+  # If using a different logging driver, adjust the path accordingly.
   - job_name: docker
     static_configs:
       - targets:
