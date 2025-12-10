@@ -338,5 +338,5 @@ The new automatic deployment feature eliminates the "hiccups" and frustration of
 
 **Need Help?**
 - See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common issues
-- See [QUICKSTART.md](QUICKSTART.md) for quick reference
+- See [GETTING_STARTED.md](GETTING_STARTED.md) for quick reference
 - Create an issue on GitHub for support

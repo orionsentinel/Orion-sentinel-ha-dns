@@ -367,7 +367,7 @@ docker exec pihole_primary pihole -g
 
 ## Additional Resources
 
-- **[QUICKSTART.md](QUICKSTART.md)** - One-page quick reference
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Quick start guide
 - **[INSTALL.md](INSTALL.md)** - Comprehensive installation guide with advanced options
 - **[USER_GUIDE.md](USER_GUIDE.md)** - Daily operations and maintenance
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Detailed troubleshooting guide

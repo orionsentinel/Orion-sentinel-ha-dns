@@ -798,7 +798,7 @@ A: Yes, designed for 24/7 operation. Self-healing handles failures automatically
 - **Installation Guide**: [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md)
 - **Advanced Features**: [ADVANCED_FEATURES.md](ADVANCED_FEATURES.md)
 - **Security Guide**: [SECURITY_GUIDE.md](SECURITY_GUIDE.md)
-- **Deployment Guide**: [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
+- **Getting Started**: [GETTING_STARTED.md](GETTING_STARTED.md)
 
 ### Support Channels
 - **GitHub Issues**: https://github.com/orionsentinel/Orion-sentinel-ha-dns/issues
