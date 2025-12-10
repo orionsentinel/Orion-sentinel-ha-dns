@@ -171,11 +171,19 @@ install-systemd-primary: ## Install systemd services for primary node
 	@if [ ! -f ./ops/install-systemd.sh ]; then \
 		echo "$(RED)Error: ./ops/install-systemd.sh not found.$(NC)"; \
 		exit 1; \
+	@echo "$(GREEN)Installing systemd services for primary node...$(NC)"
+	@if [ ! -f ./ops/install-systemd.sh ]; then \
+		echo "$(RED)Error: ./ops/install-systemd.sh not found.$(NC)"; \
+		exit 1; \
 	fi
 	@sudo ./ops/install-systemd.sh primary
 
 install-systemd-backup: ## Install systemd services for backup node
 	@echo "$(GREEN)Installing systemd services for backup node...$(NC)"
+	@if [ ! -f ./ops/install-systemd.sh ]; then \
+		echo "$(RED)Error: ./ops/install-systemd.sh not found.$(NC)"; \
+		exit 1; \
+	fi
 	@if [ ! -f ./ops/install-systemd.sh ]; then \
 		echo "$(RED)Error: ./ops/install-systemd.sh not found.$(NC)"; \
 		exit 1; \
