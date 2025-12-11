@@ -35,6 +35,7 @@ services:
     volumes:
       - ./pihole/etc-pihole:/etc/pihole
       - ./pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+      - ./pihole/var-log:/var/log/pihole
       # Optional: NextDNS DoT forwarding config
       # If the file exists, Unbound forwards to NextDNS over DoT.
       # If absent/unmounted, Unbound performs full local recursive resolution.
@@ -118,9 +119,13 @@ services:
     network_mode: host
     restart: unless-stopped
     environment:
-      - LOKI_URL=${LOKI_URL:-http://192.168.8.100:3100}
+      - LOKI_URL=${LOKI_URL:-http://192.168.8.100:3100/loki/api/v1/push}
+      - HOSTNAME=${HOSTNAME:-orion-dns}
     volumes:
       - ./promtail/config.yml:/etc/promtail/config.yml:ro
-      - /var/log:/var/log:ro
-      - ./pihole/etc-pihole/pihole.log:/var/log/pihole/pihole.log:ro
-    command: -config.file=/etc/promtail/config.yml
+      - ./pihole/var-log:/var/log/pihole:ro
+      - /var/log/syslog:/var/log/syslog:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command:
+      - "-config.file=/etc/promtail/config.yml"
+      - "-config.expand-env=true"

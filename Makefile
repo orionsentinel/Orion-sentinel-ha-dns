@@ -131,6 +131,14 @@ health-check: ## Run comprehensive health check
 
 test: health-check ## Run health check (alias)
 
+selfcheck: ## Validate configuration files
+	@echo "$(BOLD)Running self-check...$(NC)"
+	@bash scripts/selfcheck.sh
+
+bootstrap: ## Create required directories and files
+	@echo "$(BOLD)Bootstrapping directories...$(NC)"
+	@bash scripts/bootstrap_dirs.sh
+
 health: health-check ## Run health check (standardized alias)
 
 ps: ## Show running containers

@@ -75,58 +75,143 @@ dig @localhost github.com
 
 For production high-availability:
 
-#### Node A (Primary)
+#### Step 1: Clone on Both Nodes
+
+On **both** Pi nodes, clone the repository to `/opt/orion-dns-ha`:
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
-cd Orion-sentinel-ha-dns
+sudo mkdir -p /opt
+sudo chown $USER:$USER /opt
+git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git /opt/orion-dns-ha
+cd /opt/orion-dns-ha
+```
 
-# 2. Configure as primary
+#### Step 2: Bootstrap Directories
+
+On **both** nodes, run the bootstrap script to create required directories:
+
+```bash
+./scripts/bootstrap_dirs.sh
+```
+
+This creates:
+- `pihole/var-log/` - Directory for Pi-hole logs
+- `pihole/var-log/pihole.log` - Log file (as file, not directory)
+- `pihole/etc-pihole/` - Pi-hole configuration
+- `pihole/etc-dnsmasq.d/` - Dnsmasq configuration
+
+#### Step 3: Configure Node A (Primary)
+
+```bash
+cd /opt/orion-dns-ha
+
+# Copy primary template
 cp .env.primary.example .env
-nano .env  # Set WEBPASSWORD and VRRP_PASSWORD
 
-# 3. Start services
+# Edit configuration
+nano .env
+```
+
+Set the following in `.env`:
+```bash
+NODE_NAME=pi1-dns
+NODE_IP=192.168.8.249
+NODE_ROLE=MASTER
+KEEPALIVED_PRIORITY=200
+VIP_ADDRESS=192.168.8.250
+NETWORK_INTERFACE=eth1
+PEER_IP=192.168.8.243
+UNICAST_SRC_IP=192.168.8.249
+WEBPASSWORD=<your-secure-password>
+VRRP_PASSWORD=<shared-password-both-nodes>
+LOKI_URL=http://<loki-server>:3100/loki/api/v1/push
+```
+
+#### Step 4: Configure Node B (Secondary)
+
+```bash
+cd /opt/orion-dns-ha
+
+# Copy secondary template
+cp .env.secondary.example .env
+
+# Edit configuration
+nano .env
+```
+
+Set the following in `.env`:
+```bash
+NODE_NAME=pi2-dns
+NODE_IP=192.168.8.243
+NODE_ROLE=BACKUP
+KEEPALIVED_PRIORITY=150
+VIP_ADDRESS=192.168.8.250
+NETWORK_INTERFACE=eth1
+PEER_IP=192.168.8.249
+UNICAST_SRC_IP=192.168.8.243
+WEBPASSWORD=<your-secure-password>
+VRRP_PASSWORD=<shared-password-both-nodes>  # Must match primary!
+LOKI_URL=http://<loki-server>:3100/loki/api/v1/push
+```
+
+#### Step 5: Validate Configuration
+
+On **both** nodes, run the self-check:
+
+```bash
+./scripts/selfcheck.sh
+```
+
+#### Step 6: Start the Stack
+
+On **Node A (Primary)**:
+
+```bash
 docker compose --profile two-node-ha-primary up -d
 
-# 4. Verify VIP assigned
-ip addr show eth1 | grep 192.168.8.250
+# If using Promtail for logging:
+docker compose --profile two-node-ha-primary --profile exporters up -d
 ```
 
-#### Node B (Secondary)
+On **Node B (Secondary)**:
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/orionsentinel/Orion-sentinel-ha-dns.git
-cd Orion-sentinel-ha-dns
-
-# 2. Configure as secondary
-cp .env.secondary.example .env
-nano .env  # Set WEBPASSWORD and VRRP_PASSWORD (must match primary!)
-
-# 3. Start services
 docker compose --profile two-node-ha-backup up -d
 
-# 4. Verify VRRP communication
-docker logs keepalived
+# If using Promtail for logging:
+docker compose --profile two-node-ha-backup --profile exporters up -d
 ```
 
-#### Testing Failover
+#### Step 7: Verify DNS
 
 ```bash
-# On any client machine
+# Test local DNS
+dig github.com @127.0.0.1 +short
+
+# Test via VIP (from any machine on the network)
+dig github.com @192.168.8.250 +short
+```
+
+#### Step 8: Test Failover
+
+```bash
+# From any client:
 dig @192.168.8.250 github.com  # Should work
 
-# Stop primary node's Pi-hole
+# Stop primary node's containers
 # On Node A:
-docker stop pihole_unbound
+docker stop pihole_unbound keepalived
 
-# VIP should move to Node B within ~15 seconds
-# On Node B:
+# Wait ~15 seconds for VIP failover
+# On Node B, check VIP was acquired:
 ip addr show eth1 | grep 192.168.8.250
 
-# DNS should still work
+# DNS should still work via VIP:
 dig @192.168.8.250 github.com  # Still resolves!
+
+# Restart primary:
+# On Node A:
+docker start pihole_unbound keepalived
 ```
 
 ---
@@ -404,6 +489,59 @@ docker exec keepalived tail -f /var/log/keepalived-notify.log
 2. Check `CHECK_DNS_TARGET=127.0.0.1` is set
 3. Verify `CHECK_DNS_FQDN` resolves: `docker exec keepalived dig @127.0.0.1 github.com`
 4. Review keepalived logs for health check failures
+
+#### dnsmasq: cannot open log - Is a directory
+
+**Symptoms:** Pi-hole container fails to start with:
+```
+dnsmasq: cannot open log /var/log/pihole/pihole.log: Is a directory
+```
+
+**Cause:** The `pihole.log` was accidentally created as a directory instead of a file.
+
+**Fix:**
+```bash
+# Remove the directory and recreate as file
+rm -rf ./pihole/var-log/pihole.log
+touch ./pihole/var-log/pihole.log
+
+# Or run the bootstrap script:
+./scripts/bootstrap_dirs.sh
+
+# Restart the container
+docker compose restart pihole_unbound
+```
+
+**Prevention:** Always run `./scripts/bootstrap_dirs.sh` before first deployment.
+
+#### Promtail "unsupported protocol scheme" error
+
+**Symptoms:** Promtail logs show:
+```
+level=error msg="error sending batch" error="Post \"\": unsupported protocol scheme \"\""
+```
+
+**Cause:** `LOKI_URL` is empty or doesn't include the full path.
+
+**Fix:**
+1. Check your `.env` file has `LOKI_URL` set correctly:
+   ```bash
+   # Correct format (include full path):
+   LOKI_URL=http://192.168.8.100:3100/loki/api/v1/push
+   
+   # Wrong (missing path):
+   # LOKI_URL=http://192.168.8.100:3100
+   ```
+
+2. Restart promtail:
+   ```bash
+   docker compose restart promtail
+   ```
+
+3. Verify logs are being sent:
+   ```bash
+   docker logs promtail --tail 50
+   ```
 
 ---
 

@@ -19,6 +19,8 @@ pihole/etc-pihole/*
 !pihole/etc-pihole/.gitkeep
 pihole/etc-dnsmasq.d/*
 !pihole/etc-dnsmasq.d/.gitkeep
+pihole/var-log/*
+!pihole/var-log/.gitkeep
 
 # Keepalived runtime config (generated at runtime)
 keepalived/config/*

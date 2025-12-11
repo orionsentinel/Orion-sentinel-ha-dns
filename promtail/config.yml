@@ -6,7 +6,7 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  - url: ${LOKI_URL:-http://192.168.8.100:3100}/loki/api/v1/push
+  - url: ${LOKI_URL}
 
 scrape_configs:
   # Pi-hole DNS query logs
@@ -16,7 +16,7 @@ scrape_configs:
           - localhost
         labels:
           job: pihole
-          host: ${HOSTNAME:-orion-dns}
+          host: ${HOSTNAME}
           __path__: /var/log/pihole/pihole.log
 
   # System logs
@@ -26,15 +26,17 @@ scrape_configs:
           - localhost
         labels:
           job: syslog
-          host: ${HOSTNAME:-orion-dns}
+          host: ${HOSTNAME}
           __path__: /var/log/syslog
 
-  # Docker container logs (if available)
+  # Docker container logs
+  # Note: This pattern matches Docker's default JSON log driver format.
+  # If using a different logging driver, adjust the path accordingly.
   - job_name: docker
     static_configs:
       - targets:
           - localhost
         labels:
           job: docker
-          host: ${HOSTNAME:-orion-dns}
-          __path__: /var/log/docker/*.log
+          host: ${HOSTNAME}
+          __path__: /var/lib/docker/containers/*/*-json.log
