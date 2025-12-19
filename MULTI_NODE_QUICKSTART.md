@@ -107,17 +107,22 @@ PEER_IP=192.168.8.12          # Points to Pi2
 
 # VIP CONFIGURATION
 VIP_ADDRESS=192.168.8.249      # Same on both
+VIP_NETMASK=32                 # /32 for host-only IP
 
 # KEEPALIVED - PI1 HAS HIGHER PRIORITY
 KEEPALIVED_PRIORITY=200        # Higher = preferred MASTER
 
 # SECURITY - CHANGE THESE!
-VRRP_PASSWORD=YourSecureVRRPPassword123!
+# CRITICAL: VRRP_PASSWORD must be EXACTLY 8 characters (VRRP PASS auth limitation)
+VRRP_PASSWORD=oriondns         # Exactly 8 chars! Must match Pi2!
 PIHOLE_PASSWORD=YourSecurePiholePassword123!
 
 # MONITORING - Enable on Pi1 only
 DEPLOY_MONITORING=true
 ```
+
+> **⚠️ IMPORTANT:** VRRP_PASSWORD must be exactly 8 characters (VRRP PASS limitation).
+> The container will refuse to start if the password length is incorrect.
 
 Save and exit (Ctrl+X, Y, Enter).
 
@@ -151,12 +156,14 @@ PEER_IP=192.168.8.11           # Points to Pi1
 
 # VIP CONFIGURATION (same as Pi1)
 VIP_ADDRESS=192.168.8.249
+VIP_NETMASK=32                 # /32 for host-only IP
 
 # KEEPALIVED - PI2 HAS LOWER PRIORITY
 KEEPALIVED_PRIORITY=150        # Lower = BACKUP node
 
 # SECURITY - MUST BE SAME AS PI1!
-VRRP_PASSWORD=YourSecureVRRPPassword123!    # SAME as Pi1
+# CRITICAL: VRRP_PASSWORD must be EXACTLY 8 characters (must match Pi1!)
+VRRP_PASSWORD=oriondns         # Exactly 8 chars! Same as Pi1!
 PIHOLE_PASSWORD=YourSecurePiholePassword123!  # SAME as Pi1
 
 # MONITORING - Disable on Pi2 to save resources
@@ -202,6 +209,26 @@ docker compose ps
 ---
 
 ### Step 5: Verify Deployment (5 min)
+
+Run the automated verification script on **both** nodes:
+
+```bash
+cd /opt/Orion-sentinel-ha-dns
+./scripts/verify-ha.sh
+```
+
+This script will check:
+- ✓ Which node currently holds the VIP
+- ✓ Keepalived container status and logs
+- ✓ Unicast peer configuration (PEER_IP and UNICAST_SRC_IP)
+- ✓ DNS resolution via VIP
+- ✓ DNS resolution via node IP
+
+**Expected results:**
+- **Pi1 (Primary):** Has VIP, state MASTER, DNS works on both VIP and Node IP
+- **Pi2 (Secondary):** No VIP, state BACKUP, DNS works on Node IP only
+
+#### Manual Verification (if needed)
 
 #### Check VIP Ownership
 

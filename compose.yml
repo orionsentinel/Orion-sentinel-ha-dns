@@ -54,12 +54,13 @@ services:
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
+      - NET_RAW
     environment:
       NODE_ROLE: ${NODE_ROLE:-MASTER}
       KEEPALIVED_PRIORITY: ${KEEPALIVED_PRIORITY:-200}
       ROUTER_ID: ${ROUTER_ID:-orion-dns-ha}
       VIP_ADDRESS: ${VIP_ADDRESS:-192.168.8.250}
-      VIP_NETMASK: ${VIP_NETMASK:-24}
+      VIP_NETMASK: ${VIP_NETMASK:-32}
       NETWORK_INTERFACE: ${NETWORK_INTERFACE:-eth1}
       VIRTUAL_ROUTER_ID: ${VIRTUAL_ROUTER_ID:-51}
       VRRP_PASSWORD: ${VRRP_PASSWORD:-oriondns}

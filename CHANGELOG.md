@@ -7,6 +7,109 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - v2.5.0 HA Reliability Improvements (2024-12-19) 🔒
+
+- **Strict Keepalived Validation** - Prevent split-brain scenarios
+  - Enforces VRRP_PASSWORD to be exactly 8 characters (VRRP PASS auth limitation)
+  - Validates PEER_IP and UNICAST_SRC_IP when unicast mode is enabled
+  - IPv4 address format validation with octet range checking
+  - Clear error messages on validation failures with examples
+  - Automatic script permission fixing on every container start (root:root, 700)
+- **Enhanced Environment Templates** (`env/primary.env`, `env/secondary.env`)
+  - Pre-configured templates with correct IPs for standard two-node setup
+  - Primary: MASTER, priority 200, IPs 192.168.8.250→251
+  - Secondary: BACKUP, priority 150, IPs 192.168.8.251→250
+  - VIP_NETMASK default changed from /24 to /32 for cleaner host-only assignment
+- **HA Verification Script** (`scripts/verify-ha.sh`)
+  - Check which node currently holds the VIP
+  - Display keepalived state (MASTER/BACKUP) from logs
+  - Verify unicast peer configuration (PEER_IP, UNICAST_SRC_IP)
+  - Test DNS resolution via VIP and node IPs
+  - Color-coded output for easy status interpretation
+- **Optional Pi-hole Configuration Sync** - Gravity Sync style replication
+  - `scripts/pihole-sync.sh` - SSH-based primary→secondary sync
+  - Syncs adlists, whitelist, blacklist, regex filters, custom DNS records
+  - Optional gravity database sync
+  - Dry-run mode for preview
+  - systemd timer for automated sync every 6 hours
+- **Comprehensive Troubleshooting Documentation**
+  - How to diagnose secondary becoming MASTER when primary is healthy
+  - VRRP packet verification with tcpdump
+  - Unicast peer configuration verification commands
+  - NIC flapping troubleshooting guidance
+  - Script permission fix procedures
+
+### Changed
+
+- **Keepalived Container** - Added NET_RAW capability for VRRP protocol 112
+- **Default VIP Netmask** - Changed from /24 to /32 for host-only VIP assignment
+- **Documentation** - VRRP_PASSWORD requirements now prominently documented in README and MULTI_NODE_QUICKSTART
+
+### Fixed
+
+- **Split-brain prevention** - Secondary no longer becomes MASTER when primary is healthy
+  - Root cause: Empty PEER_IP or wrong unicast configuration
+  - Fix: Strict validation prevents container start with invalid config
+- **Script permission warnings** - "Unsafe permissions ... disabling" errors
+  - Root cause: /etc/keepalived is a bind mount, permissions not preserved
+  - Fix: Scripts copied and secured on every container start
+- **Configuration clarity** - unicast_peer block now always included when USE_UNICAST_VRRP=true
+
+### Security
+
+- Added note about SSH root user in pihole-sync.sh (consider dedicated service account)
+- Improved trap handling in sync scripts for proper cleanup
+
+### Impact on Users
+
+- **Deterministic HA Behavior**: Secondary stays BACKUP when primary is healthy
+- **Easier Troubleshooting**: verify-ha.sh provides instant status overview
+- **Safer Configuration**: Invalid settings caught at container start, not runtime
+- **Optional Config Sync**: Pi-hole settings can be kept in sync automatically
+
+### Migration Steps
+
+Existing deployments continue to work, but to benefit from improvements:
+
+1. **Update VRRP_PASSWORD to exactly 8 characters** (if not already):
+   ```bash
+   # In your .env file
+   VRRP_PASSWORD=oriondns  # Exactly 8 chars
+   ```
+
+2. **Verify and set unicast peer IPs** (if using unicast mode):
+   ```bash
+   # Primary .env
+   UNICAST_SRC_IP=192.168.8.250
+   PEER_IP=192.168.8.251
+   
+   # Secondary .env
+   UNICAST_SRC_IP=192.168.8.251
+   PEER_IP=192.168.8.250
+   ```
+
+3. **Recreate keepalived containers**:
+   ```bash
+   cd /opt/orion-dns-ha/Orion-sentinel-ha-dns
+   docker compose --profile two-node-ha-primary up -d --build --force-recreate keepalived
+   ```
+
+4. **Verify HA is working correctly**:
+   ```bash
+   ./scripts/verify-ha.sh
+   ```
+
+Alternatively, use the new simplified templates:
+```bash
+# Primary node
+cp env/primary.env .env
+# Edit WEBPASSWORD and other settings
+
+# Secondary node  
+cp env/secondary.env .env
+# Edit WEBPASSWORD and other settings
+```
+
 ### Added - v2.4.0 Smart Upgrade System (2024-11-19) 🚀
 - **Smart Upgrade System** (`scripts/smart-upgrade.sh`) - Intelligent upgrade management
   - Interactive menu interface for upgrade operations

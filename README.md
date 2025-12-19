@@ -123,9 +123,16 @@ NETWORK_INTERFACE=eth1
 PEER_IP=192.168.8.243
 UNICAST_SRC_IP=192.168.8.249
 WEBPASSWORD=<your-secure-password>
-VRRP_PASSWORD=<shared-password-both-nodes>
+# CRITICAL: VRRP_PASSWORD must be EXACTLY 8 characters (VRRP PASS auth limitation)
+VRRP_PASSWORD=oriondns
 LOKI_URL=http://<loki-server>:3100/loki/api/v1/push
 ```
+
+> **⚠️ IMPORTANT: VRRP_PASSWORD Requirements**
+> - Must be **exactly 8 characters** (VRRP PASS authentication limitation)
+> - Must be identical on both primary and secondary nodes
+> - Container will refuse to start if password is not exactly 8 characters
+> - Example valid passwords: `oriondns`, `ha123456`, `secure88`
 
 #### Step 4: Configure Node B (Secondary)
 
@@ -150,9 +157,17 @@ NETWORK_INTERFACE=eth1
 PEER_IP=192.168.8.249
 UNICAST_SRC_IP=192.168.8.243
 WEBPASSWORD=<your-secure-password>
-VRRP_PASSWORD=<shared-password-both-nodes>  # Must match primary!
+# CRITICAL: Must match primary node password - exactly 8 characters!
+VRRP_PASSWORD=oriondns
 LOKI_URL=http://<loki-server>:3100/loki/api/v1/push
 ```
+
+> **📝 Note:** Alternatively, use the new simplified templates:
+> - Primary: `cp env/primary.env .env`
+> - Secondary: `cp env/secondary.env .env`
+> 
+> These templates have the correct IPs pre-configured for a standard setup.
+> You only need to change WEBPASSWORD and optionally VRRP_PASSWORD.
 
 #### Step 5: Validate Configuration
 
@@ -164,9 +179,12 @@ On **both** nodes, run the self-check:
 
 #### Step 6: Start the Stack
 
+**IMPORTANT:** Always run Docker Compose from `/opt/orion-dns-ha/Orion-sentinel-ha-dns`
+
 On **Node A (Primary)**:
 
 ```bash
+cd /opt/orion-dns-ha/Orion-sentinel-ha-dns
 docker compose --profile two-node-ha-primary up -d
 
 # If using Promtail for logging:
@@ -176,13 +194,34 @@ docker compose --profile two-node-ha-primary --profile exporters up -d
 On **Node B (Secondary)**:
 
 ```bash
+cd /opt/orion-dns-ha/Orion-sentinel-ha-dns
 docker compose --profile two-node-ha-backup up -d
 
 # If using Promtail for logging:
 docker compose --profile two-node-ha-backup --profile exporters up -d
 ```
 
-#### Step 7: Verify DNS
+#### Step 7: Verify HA Configuration
+
+Run the verification script on **both** nodes:
+
+```bash
+cd /opt/orion-dns-ha/Orion-sentinel-ha-dns
+./scripts/verify-ha.sh
+```
+
+This will check:
+- ✓ Which node currently holds the VIP
+- ✓ Keepalived container status and logs
+- ✓ Unicast peer configuration (PEER_IP and UNICAST_SRC_IP)
+- ✓ DNS resolution via VIP
+- ✓ DNS resolution via node IP
+
+**Expected results:**
+- **Primary (MASTER):** Has VIP, state MASTER, DNS works on both VIP and Node IP
+- **Secondary (BACKUP):** No VIP, state BACKUP, DNS works on Node IP only
+
+#### Step 8: Verify DNS Resolution
 
 ```bash
 # Test local DNS
@@ -192,7 +231,7 @@ dig github.com @127.0.0.1 +short
 dig github.com @192.168.8.250 +short
 ```
 
-#### Step 8: Test Failover
+#### Step 9: Test Failover
 
 ```bash
 # From any client:
@@ -212,6 +251,100 @@ dig @192.168.8.250 github.com  # Still resolves!
 # Restart primary:
 # On Node A:
 docker start pihole_unbound keepalived
+```
+
+---
+
+## Troubleshooting HA Issues
+
+### Secondary Node Becomes MASTER When Primary is Healthy
+
+If the secondary node promotes itself to MASTER even when the primary is healthy, this indicates VRRP packets aren't flowing. Follow these steps:
+
+#### 1. Check Unicast Peer Configuration
+
+On **both** nodes, verify unicast peer configuration:
+
+```bash
+docker exec -it keepalived sh -c '
+echo "=== unicast_peer block ===";
+awk "/unicast_peer/{p=1} p{print} p && /}/{exit}" /etc/keepalived/keepalived.conf;
+echo;
+echo "=== unicast_src_ip ===";
+grep unicast_src_ip /etc/keepalived/keepalived.conf
+'
+```
+
+**Expected:**
+- **Primary:** `unicast_src_ip 192.168.8.250` and `unicast_peer { 192.168.8.251 }`
+- **Secondary:** `unicast_src_ip 192.168.8.251` and `unicast_peer { 192.168.8.250 }`
+
+If peer IPs are missing or wrong, fix your `.env` file and recreate:
+```bash
+cd /opt/orion-dns-ha/Orion-sentinel-ha-dns
+docker compose --profile two-node-ha-primary up -d --build --force-recreate keepalived
+```
+
+#### 2. Verify VRRP Packets Are Flowing
+
+Install tcpdump in the container and check for VRRP packets (protocol 112):
+
+On **primary:**
+```bash
+docker exec -it keepalived sh -c '
+apk add --no-cache tcpdump >/dev/null 2>&1 || true
+tcpdump -ni eth1 proto 112 -c 10
+'
+```
+
+Run the same on **secondary**.
+
+**What to look for:**
+- If primary shows packets but secondary shows none → filtering/rp_filter/NIC issue
+- If neither shows packets → keepalived isn't sending (wrong peer IP or permissions issue)
+
+#### 3. Fix Script Permission Issues
+
+If you see `Unsafe permissions found for script ... disabling` in logs:
+
+```bash
+docker exec -it keepalived sh -c '
+ls -l /etc/keepalived/*.sh
+chown root:root /etc/keepalived/*.sh 2>/dev/null || true
+chmod 700 /etc/keepalived/*.sh 2>/dev/null || true
+ls -l /etc/keepalived/*.sh
+'
+docker restart keepalived
+```
+
+**Note:** The updated entrypoint.sh now fixes this automatically on every container start.
+
+#### 4. Check for NIC Flapping (eth1 up/down events)
+
+If you see logs like `Netlink reports eth1 down` or `Interface eth1 deleted`:
+
+```bash
+dmesg -T | egrep -i 'eth1|link up|link down|usb|rtl|tg3|r8152|reset' | tail -200
+ip link show eth1
+```
+
+This indicates NIC driver issues (common with USB 2.5G adapters). Solutions:
+- Disable EEE (Energy Efficient Ethernet)
+- Disable USB power management
+- Check cable and switch quality
+
+#### 5. Validate VRRP_PASSWORD Length
+
+The container now enforces VRRP_PASSWORD to be exactly 8 characters. Check logs:
+
+```bash
+docker logs keepalived 2>&1 | grep -A5 "Validating environment"
+```
+
+If you see password length errors, update `.env` and recreate:
+```bash
+VRRP_PASSWORD=oriondns  # Exactly 8 chars
+docker compose --profile two-node-ha-primary up -d --force-recreate keepalived
 ```
 
 ---
@@ -249,27 +382,64 @@ make sync  # Run on primary node
 make info
 ```
 
-### Pi-hole Configuration Sync
+### Pi-hole Configuration Sync (Optional)
 
-Synchronize Pi-hole configuration from primary to secondary:
+Keepalived only manages VIP failover. To synchronize Pi-hole configuration between nodes, use the optional sync script.
 
+**Enable Pi-hole Sync:**
+
+Add to your `.env` file on the **secondary** node:
 ```bash
-# On primary node, sync to secondary
-PEER_IP=192.168.8.243 ./ops/pihole-sync.sh
+PIHOLE_SYNC_ENABLED=true
+PRIMARY_NODE_IP=192.168.8.250
+SECONDARY_NODE_IP=192.168.8.251
+SYNC_GRAVITY_DB=true  # Set to false to skip gravity database
+```
 
-# Or use Make
-make sync
+**Set up SSH key authentication** (run on secondary node):
+```bash
+# Generate SSH key if not present
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ""
+
+# Copy to primary node
+ssh-copy-id root@192.168.8.250
+```
+
+**Manual sync** (run on secondary node):
+```bash
+cd /opt/orion-dns-ha/Orion-sentinel-ha-dns
+./scripts/pihole-sync.sh
+
+# Dry run to see what would be synced
+./scripts/pihole-sync.sh --dry-run
+
+# Skip gravity database (faster, only config files)
+./scripts/pihole-sync.sh --no-gravity
+```
+
+**Automated sync with systemd timer** (run on secondary node):
+```bash
+# Install systemd service and timer
+sudo cp systemd/pihole-sync.service /etc/systemd/system/
+sudo cp systemd/pihole-sync.timer /etc/systemd/system/
+
+# Enable and start timer (runs every 6 hours)
+sudo systemctl daemon-reload
+sudo systemctl enable --now pihole-sync.timer
+
+# Check timer status
+sudo systemctl status pihole-sync.timer
+sudo systemctl list-timers pihole-sync.timer
 ```
 
 **What gets synced:**
-- Gravity database (blocklists, adlists, groups)
-- Pi-hole settings
+- Adlists, whitelist, blacklist
+- Regex filters
 - Custom DNS records
-- Whitelist/blacklist entries
+- DHCP configuration (if enabled)
+- Gravity database (blocklists, domains)
 
-**Prerequisites:**
-- SSH key-based authentication between nodes
-- `rsync` installed on both nodes
+**Note:** This is a one-way sync from primary → secondary. Changes made on the secondary will be overwritten.
 
 ### Backups
 
