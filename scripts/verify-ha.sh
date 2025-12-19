@@ -26,11 +26,8 @@ echo "  Orion Sentinel DNS HA - Health Verification"
 echo "============================================================================="
 echo ""
 
-# Check if running as root (needed for some commands)
-if [ "$EUID" -ne 0 ]; then 
-  echo -e "${COLOR_YELLOW}⚠️  Not running as root. Some checks may require sudo.${COLOR_RESET}"
-  echo ""
-fi
+# Note: Most checks don't require root, but some network commands may need sudo
+# The script will inform you if root privileges are needed for specific commands
 
 # =============================================================================
 # 1. VIP Status - Which node holds the Virtual IP?

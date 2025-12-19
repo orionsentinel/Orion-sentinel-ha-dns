@@ -74,6 +74,7 @@ validate_ipv4() {
   
   # Validate each octet is 0-255
   local IFS='.'
+  # shellcheck disable=SC2206
   local octets=($ip)
   for octet in "${octets[@]}"; do
     if [ "$octet" -lt 0 ] || [ "$octet" -gt 255 ]; then

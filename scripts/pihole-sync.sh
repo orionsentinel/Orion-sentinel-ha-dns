@@ -99,8 +99,8 @@ check_prerequisites() {
     exit 1
   fi
   
-  # Check if this is the secondary node
-  local_ips=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+  # Check if this is the secondary node (using standard grep without -P)
+  local_ips=$(ip -4 addr show | grep -oE 'inet [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | awk '{print $2}')
   if ! echo "$local_ips" | grep -q "$SECONDARY_NODE_IP"; then
     log_error "This script must be run on the SECONDARY node"
     log_info "Current node IPs: $(echo $local_ips | tr '\n' ' ')"
@@ -115,6 +115,8 @@ check_prerequisites() {
   fi
   
   # Check SSH access to primary
+  # Note: Using root user for simplicity. For production, consider using a dedicated
+  # service account with minimal privileges and proper SSH key restrictions.
   if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "root@${PRIMARY_NODE_IP}" exit 2>/dev/null; then
     log_warning "Cannot SSH to primary node at ${PRIMARY_NODE_IP}"
     log_info "Make sure SSH key-based authentication is set up"
@@ -136,11 +138,14 @@ sync_file() {
     return
   fi
   
-  # Create temp directory
+  # Create temp directory and set cleanup trap
   temp_dir=$(mktemp -d)
-  trap "rm -rf $temp_dir" EXIT
+  cleanup_sync_file() {
+    rm -rf "$temp_dir"
+  }
+  trap cleanup_sync_file RETURN
   
-  # Copy from primary via rsync (through SSH)
+  # Copy from primary via SSH
   if ssh "root@${PRIMARY_NODE_IP}" "docker exec ${PIHOLE_CONTAINER} test -f ${file_path}" 2>/dev/null; then
     ssh "root@${PRIMARY_NODE_IP}" "docker exec ${PIHOLE_CONTAINER} cat ${file_path}" > "${temp_dir}/$(basename ${file_path})" 2>/dev/null || {
       log_warning "Failed to fetch ${file_path} from primary"
@@ -170,9 +175,12 @@ sync_gravity() {
   # Stop Pi-hole DNS temporarily
   docker exec ${PIHOLE_CONTAINER} pihole restartdns >/dev/null 2>&1 || true
   
-  # Create temp directory
+  # Create temp directory and set cleanup trap
   temp_dir=$(mktemp -d)
-  trap "rm -rf $temp_dir" EXIT
+  cleanup_sync_gravity() {
+    rm -rf "$temp_dir"
+  }
+  trap cleanup_sync_gravity RETURN
   
   # Fetch gravity database from primary
   ssh "root@${PRIMARY_NODE_IP}" "docker exec ${PIHOLE_CONTAINER} cat ${PIHOLE_DIR}/gravity.db" > "${temp_dir}/gravity.db" || {
