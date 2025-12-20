@@ -70,6 +70,69 @@ sudo systemctl list-timers --all | grep orion
 sudo systemctl start orion-dns-ha-backup.service
 ```
 
+## Pi-hole Configuration Sync (Optional)
+
+**⚠️ DISABLED BY DEFAULT** - Automatically syncs Pi-hole configuration from PRIMARY to BACKUP node every 6 hours.
+
+**What gets synced:**
+- Gravity database (blocklists, whitelists, blacklists, regex filters)
+- Custom DNS records
+- DHCP configuration (if enabled)
+- Group management settings
+
+**What does NOT get synced:**
+- Query logs (node-specific)
+- Statistics (node-specific)
+- Web admin password (set independently)
+
+### Setup Instructions
+
+**Prerequisites:**
+1. SSH key-based authentication must be configured from BACKUP to PRIMARY:
+   ```bash
+   # On BACKUP node, as root:
+   ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N ""
+   ssh-copy-id root@192.168.8.250  # PRIMARY_NODE_IP
+   
+   # Test SSH access:
+   ssh root@192.168.8.250 exit
+   ```
+
+2. Enable sync in environment configuration:
+   ```bash
+   # In .env on BACKUP node only:
+   PIHOLE_SYNC_ENABLED=true
+   PRIMARY_NODE_IP=192.168.8.250
+   SECONDARY_NODE_IP=192.168.8.251
+   ```
+
+### Install on BACKUP node ONLY:
+
+```bash
+sudo cp systemd/pihole-sync.service /etc/systemd/system/
+sudo cp systemd/pihole-sync.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now pihole-sync.timer
+```
+
+**Verify:**
+```bash
+sudo systemctl status pihole-sync.timer
+sudo systemctl list-timers --all | grep pihole
+```
+
+**Manual sync:**
+```bash
+sudo systemctl start pihole-sync.service
+sudo journalctl -u pihole-sync.service -f
+```
+
+**Disable sync:**
+```bash
+sudo systemctl stop pihole-sync.timer
+sudo systemctl disable pihole-sync.timer
+```
+
 ## Unit Files Summary
 
 | File | Purpose | Install On |
@@ -80,6 +143,8 @@ sudo systemctl start orion-dns-ha-backup.service
 | `orion-dns-ha-health.timer` | Triggers health check every minute | Both nodes |
 | `orion-dns-ha-backup.service` | Backup configuration (oneshot) | Both nodes |
 | `orion-dns-ha-backup.timer` | Triggers backup daily at 03:15 | Both nodes |
+| `pihole-sync.service` | Sync Pi-hole config from primary (oneshot, **OPTIONAL**) | Backup node only |
+| `pihole-sync.timer` | Triggers sync every 6 hours (**OPTIONAL**) | Backup node only |
 
 ## Configuration Override
 
