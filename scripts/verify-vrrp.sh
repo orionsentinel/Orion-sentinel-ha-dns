@@ -96,25 +96,28 @@ echo ""
 echo -e "${BLUE}[3/5] Checking VRRP Packet Flow (Proto 112)${NC}"
 echo "----------------------------------------------------------------------"
 
+# Store result for later use in summary
+VRRP_PACKETS_FROM_PEER=0
+
 if command -v tcpdump &> /dev/null; then
     echo "Capturing VRRP packets for 10 seconds on ${NETWORK_INTERFACE}..."
     echo "Looking for proto 112 (VRRP) traffic..."
     echo ""
     
     # Run tcpdump for 10 seconds and capture VRRP packets
-    TCPDUMP_OUTPUT=$(timeout 10 tcpdump -i "$NETWORK_INTERFACE" -n proto 112 -c 20 2>&1 || true)
+    # Separate stdout (packet data) from stderr (warnings/errors)
+    TCPDUMP_OUTPUT=$(timeout 10 tcpdump -i "$NETWORK_INTERFACE" -n proto 112 -c 20 2>/dev/null || true)
     
     if [[ -n "$TCPDUMP_OUTPUT" ]]; then
         echo "$TCPDUMP_OUTPUT"
         
         # Analyze the output
         echo ""
-        OUTBOUND_COUNT=$(echo "$TCPDUMP_OUTPUT" | grep -c "^" || true)
         
         if [[ -n "$PEER_IP" ]]; then
-            INBOUND_FROM_PEER=$(echo "$TCPDUMP_OUTPUT" | grep -c "$PEER_IP" || true)
+            VRRP_PACKETS_FROM_PEER=$(echo "$TCPDUMP_OUTPUT" | grep -c "$PEER_IP" || true)
             
-            if [[ "$INBOUND_FROM_PEER" -gt 0 ]]; then
+            if [[ "$VRRP_PACKETS_FROM_PEER" -gt 0 ]]; then
                 echo -e "${GREEN}✓${NC} Receiving VRRP packets from peer ($PEER_IP)"
             else
                 echo -e "${RED}✗${NC} NOT receiving VRRP packets from peer ($PEER_IP)"
@@ -153,11 +156,13 @@ echo -e "${BLUE}[4/5] Testing DNS Resolution on Node IP${NC}"
 echo "----------------------------------------------------------------------"
 
 if [[ -n "$NODE_IP" ]]; then
-    if dig @"$NODE_IP" "$CHECK_DNS_FQDN" +short +time=3 +tries=1 > /dev/null 2>&1; then
-        RESULT=$(dig @"$NODE_IP" "$CHECK_DNS_FQDN" +short +time=3 +tries=1 | head -1)
+    # Execute dig once and capture result
+    DNS_RESULT=$(dig @"$NODE_IP" "$CHECK_DNS_FQDN" +short +time=3 +tries=1 2>/dev/null | head -1)
+    
+    if [[ -n "$DNS_RESULT" ]]; then
         echo -e "${GREEN}✓${NC} DNS query to ${NODE_IP} successful"
         echo "  Query: $CHECK_DNS_FQDN"
-        echo "  Result: $RESULT"
+        echo "  Result: $DNS_RESULT"
     else
         echo -e "${RED}✗${NC} DNS query to ${NODE_IP} FAILED"
         echo "  Query: $CHECK_DNS_FQDN"
@@ -175,11 +180,13 @@ echo ""
 echo -e "${BLUE}[5/5] Testing DNS Resolution on VIP${NC}"
 echo "----------------------------------------------------------------------"
 
-if dig @"$VIP_ADDRESS" "$CHECK_DNS_FQDN" +short +time=3 +tries=1 > /dev/null 2>&1; then
-    RESULT=$(dig @"$VIP_ADDRESS" "$CHECK_DNS_FQDN" +short +time=3 +tries=1 | head -1)
+# Execute dig once and capture result
+DNS_RESULT=$(dig @"$VIP_ADDRESS" "$CHECK_DNS_FQDN" +short +time=3 +tries=1 2>/dev/null | head -1)
+
+if [[ -n "$DNS_RESULT" ]]; then
     echo -e "${GREEN}✓${NC} DNS query to VIP ${VIP_ADDRESS} successful"
     echo "  Query: $CHECK_DNS_FQDN"
-    echo "  Result: $RESULT"
+    echo "  Result: $DNS_RESULT"
 else
     echo -e "${RED}✗${NC} DNS query to VIP ${VIP_ADDRESS} FAILED"
     echo "  Query: $CHECK_DNS_FQDN"
@@ -204,15 +211,13 @@ if ! docker ps --format '{{.Names}}' | grep -q "^keepalived$"; then
     HAS_ISSUES=true
 fi
 
-if [[ -n "$PEER_IP" ]] && command -v tcpdump &> /dev/null; then
-    TCPDUMP_CHECK=$(timeout 5 tcpdump -i "$NETWORK_INTERFACE" -n proto 112 -c 5 2>&1 | grep -c "$PEER_IP" || true)
-    if [[ "$TCPDUMP_CHECK" -eq 0 ]]; then
-        echo -e "${RED}⚠${NC} Not receiving VRRP packets from peer ($PEER_IP)"
-        echo "  This is the most common cause of backup becoming MASTER"
-        echo "  → Check PEER_IP setting on the other node"
-        echo "  → Verify firewall allows proto 112 (VRRP)"
-        HAS_ISSUES=true
-    fi
+# Use previously captured VRRP packet data
+if [[ -n "$PEER_IP" ]] && [[ "$VRRP_PACKETS_FROM_PEER" -eq 0 ]]; then
+    echo -e "${RED}⚠${NC} Not receiving VRRP packets from peer ($PEER_IP)"
+    echo "  This is the most common cause of backup becoming MASTER"
+    echo "  → Check PEER_IP setting on the other node"
+    echo "  → Verify firewall allows proto 112 (VRRP)"
+    HAS_ISSUES=true
 fi
 
 if [[ "$HAS_ISSUES" == false ]]; then
