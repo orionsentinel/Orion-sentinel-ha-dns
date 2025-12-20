@@ -48,6 +48,19 @@ Two-node VRRP failover for ad-blocking, privacy-focused DNS on Raspberry Pi.
 
 ## Quick Start
 
+> **⚠️ IMPORTANT: Always run `docker compose` from the repository root directory**
+>
+> Docker Compose looks for `compose.yml` in the current directory. If you see an error like:
+> ```
+> no configuration file provided: not found
+> ```
+> You are running the command from the wrong directory. Navigate to the repository root:
+> ```bash
+> cd /opt/orion-dns-ha  # or wherever you cloned the repo
+> pwd  # Should show the repo directory with compose.yml
+> ls compose.yml  # Should exist
+> ```
+
 ### Single-Node Setup
 
 Perfect for testing or simple home use:

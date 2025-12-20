@@ -11,6 +11,7 @@ This guide helps you resolve common installation and operation issues with the R
 - [DNS Resolution Issues](#dns-resolution-issues)
 - [Container Issues](#container-issues)
 - [Performance Issues](#performance-issues)
+- [VRRP / High Availability Issues](#vrrp--high-availability-issues)
 - [Getting Help](#getting-help)
 
 ---
@@ -691,6 +692,224 @@ sudo nano /etc/dphys-swapfile
 sudo dphys-swapfile setup
 sudo dphys-swapfile swapon
 ```
+
+---
+
+## VRRP / High Availability Issues
+
+### Issue: Backup node becomes MASTER (split-brain)
+
+**Symptoms:**
+- Both nodes show "Entering MASTER STATE" in keepalived logs
+- Both nodes have the VIP assigned to their interface
+- VRRP failover is not working correctly
+- tcpdump on backup shows it sending VRRP packets but receiving none from primary
+
+**Root Cause:**
+The backup node is not receiving VRRP advertisements from the primary node because:
+1. `PEER_IP` is not set or is empty on the primary node
+2. `PEER_IP` or `UNICAST_SRC_IP` are misconfigured (swapped or incorrect)
+3. Firewall is blocking VRRP packets (protocol 112)
+4. Network connectivity issues between nodes
+
+**Solution:**
+
+1. **Run the verification tool on BOTH nodes:**
+
+```bash
+cd /opt/orion-dns-ha
+./scripts/verify-vrrp.sh
+```
+
+This will check:
+- Keepalived state (MASTER/BACKUP/FAULT)
+- VIP presence on the network interface
+- VRRP packet flow (inbound/outbound)
+- DNS resolution
+
+2. **Verify environment configuration on BOTH nodes:**
+
+**Primary node** (`env/primary.env` or `.env`):
+```bash
+# Must be set for unicast VRRP
+USE_UNICAST_VRRP=true
+UNICAST_SRC_IP=192.168.8.250  # THIS node's IP
+PEER_IP=192.168.8.251          # OTHER node's IP
+NODE_ROLE=MASTER
+KEEPALIVED_PRIORITY=200
+```
+
+**Secondary node** (`env/secondary.env` or `.env`):
+```bash
+# Must be set for unicast VRRP
+USE_UNICAST_VRRP=true
+UNICAST_SRC_IP=192.168.8.251  # THIS node's IP
+PEER_IP=192.168.8.250          # OTHER node's IP
+NODE_ROLE=BACKUP
+KEEPALIVED_PRIORITY=150
+```
+
+3. **Check keepalived logs for errors:**
+
+```bash
+# On each node
+docker logs keepalived --tail 50
+
+# Look for:
+# - "Entering MASTER/BACKUP STATE"
+# - VRRP advertisement errors
+# - Authentication failures
+```
+
+4. **Verify VRRP packets with tcpdump:**
+
+```bash
+# On backup node - should see packets FROM the primary
+sudo tcpdump -i eth1 -n proto 112
+
+# Expected output (if working):
+# IP 192.168.8.250 > 192.168.8.251: VRRPv2, Advertisement...
+#
+# If you see NO packets from peer, the primary is not sending them!
+```
+
+5. **Restart keepalived after fixing configuration:**
+
+```bash
+# On each node
+docker compose down
+docker compose --profile two-node-ha-primary up -d   # on primary
+# or
+docker compose --profile two-node-ha-backup up -d    # on backup
+```
+
+**Prevention:**
+- Always use the provided `env/primary.env` and `env/secondary.env` templates
+- The entrypoint now validates PEER_IP and UNICAST_SRC_IP at startup
+- Container will refuse to start if unicast VRRP is misconfigured
+
+### Issue: VRRP_PASSWORD validation errors
+
+**Symptoms:**
+- Container exits immediately after starting
+- Logs show: "ERROR: VRRP_PASSWORD must be exactly 8 characters"
+
+**Root Cause:**
+VRRP PASS authentication has a fixed 8-character limit. Passwords shorter or longer than 8 characters will be rejected.
+
+**Solution:**
+
+1. **Set VRRP_PASSWORD to exactly 8 characters:**
+
+```bash
+# In .env or env/primary.env and env/secondary.env
+VRRP_PASSWORD=oriondns  # Exactly 8 chars
+
+# Other valid examples:
+# VRRP_PASSWORD=ha123456
+# VRRP_PASSWORD=secure88
+# VRRP_PASSWORD=vrrpPass
+```
+
+2. **Ensure both nodes use the SAME password:**
+The password must be identical on primary and secondary nodes.
+
+3. **Restart the service:**
+
+```bash
+docker compose down
+docker compose --profile two-node-ha-primary up -d
+```
+
+### Issue: VIP not accessible from network
+
+**Symptoms:**
+- VIP is assigned to the interface (verified with `ip addr`)
+- Keepalived shows MASTER state
+- Cannot ping or access VIP from other devices on the network
+
+**Solution:**
+
+1. **Check firewall rules:**
+
+```bash
+# Allow VRRP (protocol 112)
+sudo iptables -A INPUT -p vrrp -j ACCEPT
+
+# Allow DNS on VIP
+sudo iptables -A INPUT -d 192.168.8.249 -p udp --dport 53 -j ACCEPT
+sudo iptables -A INPUT -d 192.168.8.249 -p tcp --dport 53 -j ACCEPT
+```
+
+2. **Verify ARP is working:**
+
+```bash
+# On another device, check ARP table
+arp -a | grep 192.168.8.249
+
+# Force ARP refresh
+sudo arping -c 3 -I eth1 192.168.8.249
+```
+
+3. **Check network interface configuration:**
+
+```bash
+# Verify VIP is on the correct interface
+ip addr show eth1
+
+# Should show something like:
+# inet 192.168.8.249/32 scope global eth1
+```
+
+### Issue: Keepalived container won't start
+
+**Symptoms:**
+- Container exits immediately
+- Logs show validation errors
+
+**Solution:**
+
+1. **Check container logs:**
+
+```bash
+docker logs keepalived
+```
+
+2. **Common validation failures:**
+
+- **Missing required variables:** Set all required env vars in `.env`
+  ```bash
+  NETWORK_INTERFACE=eth1
+  VIP_ADDRESS=192.168.8.249
+  VIP_NETMASK=32
+  VIRTUAL_ROUTER_ID=51
+  VRRP_PASSWORD=oriondns  # Exactly 8 chars
+  ```
+
+- **Invalid IPv4 address:** Ensure all IPs are valid IPv4 addresses
+  ```bash
+  VIP_ADDRESS=192.168.8.249  # Valid
+  PEER_IP=192.168.8.251      # Valid
+  ```
+
+- **Unicast VRRP misconfiguration:** If `USE_UNICAST_VRRP=true`, must set:
+  ```bash
+  PEER_IP=192.168.8.251
+  UNICAST_SRC_IP=192.168.8.250
+  ```
+
+3. **Verify network interface exists:**
+
+```bash
+# Check if eth1 exists
+ip link show eth1
+
+# If wrong interface, update NETWORK_INTERFACE in .env
+```
+
+4. **Test with validation output:**
+
+The entrypoint performs extensive validation and shows clear error messages. Read the error output carefully and fix the reported issues.
 
 ---
 

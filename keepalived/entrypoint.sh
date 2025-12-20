@@ -53,7 +53,7 @@ fi
 echo "  ✓ VRRP_PASSWORD: exactly 8 characters"
 
 # Validate required variables
-required_vars="NODE_ROLE KEEPALIVED_PRIORITY VIP_ADDRESS NETWORK_INTERFACE VIRTUAL_ROUTER_ID ROUTER_ID"
+required_vars="NODE_ROLE KEEPALIVED_PRIORITY VIP_ADDRESS VIP_NETMASK NETWORK_INTERFACE VIRTUAL_ROUTER_ID VRRP_PASSWORD ROUTER_ID"
 for var in $required_vars; do
   if [ -z "${!var:-}" ]; then
     echo "❌ ERROR: Required environment variable ${var} is not set"
@@ -92,17 +92,30 @@ echo "  ✓ VIP_ADDRESS: valid IPv4"
 if [ "${USE_UNICAST_VRRP}" = "true" ]; then
   if [ -z "$PEER_IP" ]; then
     echo "❌ ERROR: USE_UNICAST_VRRP=true requires PEER_IP to be set"
-    echo "   PEER_IP is the IP address of the other node"
-    echo "   Example for primary: PEER_IP=192.168.8.251"
-    echo "   Example for secondary: PEER_IP=192.168.8.250"
+    echo ""
+    echo "   ⚠️  CRITICAL: Without PEER_IP, this node will NOT send unicast VRRP advertisements"
+    echo "   to the peer node. The peer will never receive VRRP packets and will timeout,"
+    echo "   causing BACKUP to become MASTER (split-brain condition)."
+    echo ""
+    echo "   PEER_IP is the IP address of the OTHER node (not this node)"
+    echo "   Example for primary (192.168.8.250): PEER_IP=192.168.8.251"
+    echo "   Example for secondary (192.168.8.251): PEER_IP=192.168.8.250"
+    echo ""
+    echo "   Fix: Set PEER_IP in your .env file"
     exit 1
   fi
   
   if [ -z "$UNICAST_SRC_IP" ]; then
     echo "❌ ERROR: USE_UNICAST_VRRP=true requires UNICAST_SRC_IP to be set"
-    echo "   UNICAST_SRC_IP is the IP address of this node"
+    echo ""
+    echo "   ⚠️  CRITICAL: Without UNICAST_SRC_IP, keepalived cannot send unicast VRRP"
+    echo "   advertisements properly, causing VRRP failover to malfunction."
+    echo ""
+    echo "   UNICAST_SRC_IP is the IP address of THIS node (not the peer)"
     echo "   Example for primary: UNICAST_SRC_IP=192.168.8.250"
     echo "   Example for secondary: UNICAST_SRC_IP=192.168.8.251"
+    echo ""
+    echo "   Fix: Set UNICAST_SRC_IP in your .env file"
     exit 1
   fi
   
