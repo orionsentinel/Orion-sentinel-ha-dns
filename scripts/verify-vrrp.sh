@@ -115,7 +115,8 @@ if command -v tcpdump &> /dev/null; then
         echo ""
         
         if [[ -n "$PEER_IP" ]]; then
-            VRRP_PACKETS_FROM_PEER=$(echo "$TCPDUMP_OUTPUT" | grep -c "$PEER_IP" || true)
+            # Match PEER_IP as source address (format: "IP <PEER_IP> >")
+            VRRP_PACKETS_FROM_PEER=$(echo "$TCPDUMP_OUTPUT" | grep -c "IP $PEER_IP >" || true)
             
             if [[ "$VRRP_PACKETS_FROM_PEER" -gt 0 ]]; then
                 echo -e "${GREEN}✓${NC} Receiving VRRP packets from peer ($PEER_IP)"
@@ -127,7 +128,8 @@ if command -v tcpdump &> /dev/null; then
         fi
         
         if [[ -n "$NODE_IP" ]]; then
-            OUTBOUND_TO_PEER=$(echo "$TCPDUMP_OUTPUT" | grep -c "$NODE_IP" || true)
+            # Match NODE_IP as source address (format: "IP <NODE_IP> >")
+            OUTBOUND_TO_PEER=$(echo "$TCPDUMP_OUTPUT" | grep -c "IP $NODE_IP >" || true)
             
             if [[ "$OUTBOUND_TO_PEER" -gt 0 ]]; then
                 echo -e "${GREEN}✓${NC} Sending VRRP packets from this node ($NODE_IP)"
